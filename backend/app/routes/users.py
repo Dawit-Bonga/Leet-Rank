@@ -26,7 +26,11 @@ from app.services.leetcode import (
     UserNotFoundError,
     fetch_recent_accepted_submissions,
 )
-from app.services.onboarding import LeetCodeUsernameTakenError, create_onboarded_user
+from app.services.onboarding import (
+    LeetCodeUsernameTakenError,
+    LeetRankUsernameTakenError,
+    create_onboarded_user,
+)
 from app.services.score_reads import ScoreUserNotFoundError, get_user_activity, get_user_scores
 from app.services.submission_sync import (
     SyncAlreadyRunningError,
@@ -63,12 +67,18 @@ def create_user(
         user, sync_state = create_onboarded_user(
             session,
             leetcode_client,
+            username=request.username,
             display_name=request.display_name,
             leetcode_username=request.leetcode_username,
             primary_goal=request.primary_goal.value,
             leetcode_experience=request.leetcode_experience.value,
             weekly_problem_goal=request.weekly_problem_goal,
         )
+    except LeetRankUsernameTakenError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "username_taken", "message": str(exc)},
+        ) from exc
     except LeetCodeUsernameTakenError as exc:
         raise HTTPException(
             status_code=409,
@@ -97,6 +107,7 @@ def create_user(
 
     return UserResponse(
         id=user.id,
+        username=user.username,
         display_name=user.display_name,
         leetcode_username=user.leetcode_username,
         primary_goal=user.primary_goal,

@@ -19,10 +19,15 @@ class LeetCodeUsernameTakenError(Exception):
     pass
 
 
+class LeetRankUsernameTakenError(Exception):
+    pass
+
+
 def create_onboarded_user(
     session: Session,
     provider: LeetCodeUserProvider,
     *,
+    username: str,
     display_name: str,
     leetcode_username: str,
     primary_goal: str,
@@ -30,6 +35,13 @@ def create_onboarded_user(
     weekly_problem_goal: int,
     now: datetime | None = None,
 ) -> tuple[User, UserSyncState]:
+    normalized_username = username.strip().lower()
+    username_duplicate = session.scalar(
+        select(User).where(User.username == normalized_username)
+    )
+    if username_duplicate is not None:
+        raise LeetRankUsernameTakenError("That LeetRank username is already taken.")
+
     normalized_input = leetcode_username.strip().lower()
     if not normalized_input:
         raise ValueError("LeetCode username cannot be blank.")
@@ -56,6 +68,7 @@ def create_onboarded_user(
         scoring_start = scoring_start.replace(tzinfo=UTC)
 
     user = User(
+        username=normalized_username,
         leetcode_username=canonical_username,
         display_name=display_name.strip(),
         primary_goal=primary_goal,
@@ -74,6 +87,8 @@ def create_onboarded_user(
         session.commit()
     except IntegrityError as exc:
         session.rollback()
+        if session.scalar(select(User).where(User.username == normalized_username)) is not None:
+            raise LeetRankUsernameTakenError("That LeetRank username is already taken.") from exc
         raise LeetCodeUsernameTakenError(
             "That LeetCode account is already connected to LeetRank."
         ) from exc

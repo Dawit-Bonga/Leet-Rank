@@ -60,6 +60,19 @@
 - Until Supabase authentication is connected, development uses `POST /users`.
   It will later become the authenticated `POST /users/me/onboarding` flow.
 
+## V1 friendships
+
+- Every user chooses a unique LeetRank username during onboarding. Usernames
+  are case-insensitive and stored in lowercase.
+- Friend requests use exact LeetRank usernames, not LeetCode or LinkedIn names.
+- A friendship exists only after the recipient accepts the request.
+- Accepted friendships are stored in both directions to keep friend and future
+  friends-only leaderboard reads simple.
+- Either participant can remove an accepted friendship. The sender can cancel
+  a pending request and the recipient can decline it.
+- V1 development endpoints still identify the acting user by URL ID. Supabase
+  authentication must replace that trust boundary before public deployment.
+
 # Product Rules
 Scoring begins when a LeetCode username is successfully connected.
 Previous LeetCode activity is ignored.

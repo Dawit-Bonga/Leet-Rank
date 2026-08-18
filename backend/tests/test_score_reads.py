@@ -41,6 +41,7 @@ def add_scored_event(session, user, problem, *, external_id, earned_at, points, 
 
 def seed_scores(session):
     user = User(
+        username="alice",
         leetcode_username="alice",
         display_name="Alice",
         scoring_started_at=AS_OF - timedelta(days=60),

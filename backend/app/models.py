@@ -25,10 +25,13 @@ class User(Base):
             "weekly_problem_goal IS NULL OR weekly_problem_goal BETWEEN 1 AND 100",
             name="ck_users_weekly_problem_goal",
         ),
+        CheckConstraint("length(username) BETWEEN 3 AND 30", name="ck_users_username_length"),
+        CheckConstraint("username = lower(username)", name="ck_users_username_lowercase"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     auth_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, unique=True)
+    username: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     leetcode_username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     primary_goal: Mapped[str | None] = mapped_column(String(24))
@@ -112,3 +115,23 @@ class Friendship(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     friend_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class FriendRequest(Base):
+    __tablename__ = "friend_requests"
+    __table_args__ = (
+        UniqueConstraint("requester_id", "addressee_id", name="uq_friend_requests_direction"),
+        CheckConstraint("requester_id <> addressee_id", name="ck_friend_requests_not_self"),
+        Index("ix_friend_requests_addressee_created_at", "addressee_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    requester_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    addressee_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

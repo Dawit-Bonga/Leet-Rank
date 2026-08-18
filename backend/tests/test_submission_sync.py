@@ -24,6 +24,7 @@ def make_session() -> Session:
 
 def add_user(session: Session, scoring_started_at: datetime) -> User:
     user = User(
+        username="alice",
         leetcode_username="alice",
         display_name="Alice",
         scoring_started_at=scoring_started_at,

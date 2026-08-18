@@ -39,6 +39,11 @@ class LeetCodeExperience(StrEnum):
 
 
 class UserOnboardingRequest(BaseModel):
+    username: str = Field(
+        min_length=3,
+        max_length=30,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_]*$",
+    )
     display_name: str = Field(min_length=1, max_length=100)
     leetcode_username: str = Field(min_length=1, max_length=64)
     primary_goal: PrimaryGoal
@@ -50,6 +55,7 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    username: str
     display_name: str
     leetcode_username: str
     primary_goal: PrimaryGoal
@@ -105,3 +111,32 @@ class UserActivityResponse(BaseModel):
     limit: int
     offset: int
     has_more: bool
+
+
+class FriendRequestCreate(BaseModel):
+    username: str = Field(
+        min_length=3,
+        max_length=30,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_]*$",
+    )
+
+
+class PublicUserSummary(BaseModel):
+    id: UUID
+    username: str
+    display_name: str
+
+
+class FriendRequestItem(BaseModel):
+    id: UUID
+    user: PublicUserSummary
+    created_at: datetime
+
+
+class FriendRequestsResponse(BaseModel):
+    incoming: list[FriendRequestItem]
+    outgoing: list[FriendRequestItem]
+
+
+class FriendsResponse(BaseModel):
+    friends: list[PublicUserSummary]
