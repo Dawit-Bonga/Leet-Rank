@@ -107,3 +107,18 @@ def test_protected_endpoint_requires_bearer_token():
     assert response.status_code == 401
     assert response.headers["www-authenticate"] == "Bearer"
     assert response.json()["detail"]["code"] == "authentication_required"
+
+
+def test_local_frontend_cors_preflight_is_allowed():
+    response = TestClient(app).options(
+        "/users/me",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "authorization" in response.headers["access-control-allow-headers"].lower()

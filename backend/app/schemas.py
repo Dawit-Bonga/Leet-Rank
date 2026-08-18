@@ -66,6 +66,12 @@ class UserResponse(BaseModel):
     sync_status: str
 
 
+class CurrentUserResponse(BaseModel):
+    email: str | None
+    onboarding_completed: bool
+    profile: UserResponse | None
+
+
 class UserSyncResponse(BaseModel):
     status: str
     fetched: int

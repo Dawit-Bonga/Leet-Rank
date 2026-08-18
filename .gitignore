@@ -15,6 +15,7 @@ node_modules/
 dist/
 .vite/
 coverage/
+*.tsbuildinfo
 
 # Logs
 *.log

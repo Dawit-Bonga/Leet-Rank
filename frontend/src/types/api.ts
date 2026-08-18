@@ -62,3 +62,58 @@ export interface SyncResponse {
   ignored_before_signup: number;
   points_awarded: number;
 }
+
+export interface PublicUserSummary {
+  id: string;
+  username: string;
+  display_name: string;
+}
+
+export interface FriendRequestItem {
+  id: string;
+  user: PublicUserSummary;
+  created_at: string;
+}
+
+export interface FriendRequestsResponse {
+  incoming: FriendRequestItem[];
+  outgoing: FriendRequestItem[];
+}
+
+export interface FriendsResponse {
+  friends: PublicUserSummary[];
+}
+
+export interface PeriodScore {
+  points: number;
+  starts_at: string;
+}
+
+export interface ScoresResponse {
+  user_id: string;
+  as_of: string;
+  scores: {
+    week: PeriodScore;
+    month: PeriodScore;
+    all_time: PeriodScore;
+  };
+}
+
+export interface ActivityItem {
+  id: string;
+  problem: {
+    title: string;
+    slug: string;
+    difficulty: "EASY" | "MEDIUM" | "HARD";
+  };
+  points: number;
+  reason: "FIRST_SOLVE" | "REVIEW" | "COOLDOWN";
+  earned_at: string;
+}
+
+export interface ActivityResponse {
+  items: ActivityItem[];
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}

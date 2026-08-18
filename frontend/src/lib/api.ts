@@ -1,8 +1,14 @@
 import type {
   CurrentUser,
+  ActivityResponse,
+  FriendRequestItem,
+  FriendRequestsResponse,
+  FriendsResponse,
   LeaderboardPeriod,
   LeaderboardResponse,
   OnboardingPayload,
+  PublicUserSummary,
+  ScoresResponse,
   SyncResponse,
   UserProfile,
 } from "../types/api";
@@ -77,4 +83,52 @@ export function getLeaderboard(
 
 export function syncLeetCode(accessToken: string): Promise<SyncResponse> {
   return request("/users/me/sync", accessToken, { method: "POST" });
+}
+
+export function getFriendRequests(accessToken: string): Promise<FriendRequestsResponse> {
+  return request("/users/me/friend-requests", accessToken);
+}
+
+export function sendFriendRequest(
+  accessToken: string,
+  username: string,
+): Promise<FriendRequestItem> {
+  return request("/users/me/friend-requests", accessToken, {
+    method: "POST",
+    body: JSON.stringify({ username }),
+  });
+}
+
+export function acceptFriendRequest(
+  accessToken: string,
+  requestId: string,
+): Promise<PublicUserSummary> {
+  return request(`/users/me/friend-requests/${requestId}/accept`, accessToken, {
+    method: "POST",
+  });
+}
+
+export function deleteFriendRequest(
+  accessToken: string,
+  requestId: string,
+): Promise<void> {
+  return request(`/users/me/friend-requests/${requestId}`, accessToken, {
+    method: "DELETE",
+  });
+}
+
+export function getFriends(accessToken: string): Promise<FriendsResponse> {
+  return request("/users/me/friends", accessToken);
+}
+
+export function removeFriend(accessToken: string, friendId: string): Promise<void> {
+  return request(`/users/me/friends/${friendId}`, accessToken, { method: "DELETE" });
+}
+
+export function getScores(accessToken: string): Promise<ScoresResponse> {
+  return request("/users/me/scores", accessToken);
+}
+
+export function getActivity(accessToken: string): Promise<ActivityResponse> {
+  return request("/users/me/activity?limit=10", accessToken);
 }

@@ -9,6 +9,7 @@ from app.models import User
 from app.schemas import (
     ActivityItem,
     ActivityProblem,
+    CurrentUserResponse,
     ErrorResponse,
     PeriodScore,
     ScorePeriods,
@@ -28,6 +29,7 @@ from app.services.leetcode import (
     fetch_recent_accepted_submissions,
 )
 from app.services.auth import AuthIdentity
+from app.services.current_account import get_current_account
 from app.services.onboarding import (
     AuthUserAlreadyOnboardedError,
     LeetCodeUsernameTakenError,
@@ -48,6 +50,48 @@ router = APIRouter(prefix="/users", tags=["users"])
 def get_leetcode_client() -> Generator[LeetCodeGraphQLClient, None, None]:
     with LeetCodeGraphQLClient() as client:
         yield client
+
+
+def _user_response(user: User, *, sync_status: str) -> UserResponse:
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        display_name=user.display_name,
+        leetcode_username=user.leetcode_username,
+        primary_goal=user.primary_goal,
+        leetcode_experience=user.leetcode_experience,
+        weekly_problem_goal=user.weekly_problem_goal,
+        scoring_started_at=user.scoring_started_at,
+        onboarding_completed_at=user.onboarding_completed_at,
+        sync_status=sync_status,
+    )
+
+
+@router.get(
+    "/me",
+    response_model=CurrentUserResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
+    },
+)
+def get_me(
+    identity: AuthIdentity = Depends(get_auth_identity),
+    session: Session = Depends(get_db),
+) -> CurrentUserResponse:
+    account = get_current_account(session, auth_user_id=identity.id)
+    if account.user is None:
+        return CurrentUserResponse(
+            email=identity.email,
+            onboarding_completed=False,
+            profile=None,
+        )
+    return CurrentUserResponse(
+        email=identity.email,
+        onboarding_completed=True,
+        profile=_user_response(account.user, sync_status=account.sync_status or "IDLE"),
+    )
 
 
 @router.post(
@@ -115,18 +159,7 @@ def create_user(
             detail={"code": "upstream_bad_response", "message": str(exc)},
         ) from exc
 
-    return UserResponse(
-        id=user.id,
-        username=user.username,
-        display_name=user.display_name,
-        leetcode_username=user.leetcode_username,
-        primary_goal=user.primary_goal,
-        leetcode_experience=user.leetcode_experience,
-        weekly_problem_goal=user.weekly_problem_goal,
-        scoring_started_at=user.scoring_started_at,
-        onboarding_completed_at=user.onboarding_completed_at,
-        sync_status=sync_state.sync_status,
-    )
+    return _user_response(user, sync_status=sync_state.sync_status)
 
 
 @router.post(

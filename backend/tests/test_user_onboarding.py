@@ -47,7 +47,7 @@ def onboarding_client() -> Generator[tuple[TestClient, Session, FakeLeetCodeClie
     app.dependency_overrides[get_leetcode_client] = lambda: provider
     app.dependency_overrides[get_auth_identity] = lambda: AuthIdentity(
         id=provider.auth_user_id,
-        email=None,
+        email="alice@example.com",
     )
     try:
         yield TestClient(app), session, provider
@@ -80,6 +80,27 @@ def test_onboarding_creates_user_and_idle_sync_state(onboarding_client):
     assert provider.requested_usernames == ["alicelc"]
     assert session.scalar(select(func.count()).select_from(User)) == 1
     assert session.scalar(select(func.count()).select_from(UserSyncState)) == 1
+
+
+def test_get_me_reports_onboarding_state_and_profile(onboarding_client):
+    client, _, _ = onboarding_client
+
+    before = client.get("/users/me")
+    assert before.status_code == 200
+    assert before.json() == {
+        "email": "alice@example.com",
+        "onboarding_completed": False,
+        "profile": None,
+    }
+
+    assert client.post("/users/me/onboarding", json=onboarding_payload()).status_code == 201
+
+    after = client.get("/users/me")
+    assert after.status_code == 200
+    assert after.json()["email"] == "alice@example.com"
+    assert after.json()["onboarding_completed"] is True
+    assert after.json()["profile"]["username"] == "alice"
+    assert after.json()["profile"]["sync_status"] == "IDLE"
 
 
 def test_duplicate_leetcode_username_is_rejected_without_second_provider_call(onboarding_client):

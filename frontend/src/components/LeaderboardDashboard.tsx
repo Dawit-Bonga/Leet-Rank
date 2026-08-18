@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, getLeaderboard, syncLeetCode } from "../lib/api";
+import { formatTimestamp, initials } from "../lib/format";
 import type {
   LeaderboardPeriod,
   LeaderboardResponse,
   SyncResponse,
   UserProfile,
 } from "../types/api";
-import { Brand } from "./Brand";
-
 interface LeaderboardDashboardProps {
   accessToken: string;
-  email: string | null;
   profile: UserProfile;
-  onSignOut: () => Promise<void>;
 }
 
 const periods: Array<{ value: LeaderboardPeriod; label: string }> = [
@@ -22,28 +19,9 @@ const periods: Array<{ value: LeaderboardPeriod; label: string }> = [
   { value: "all_time", label: "All time" },
 ];
 
-function formatTimestamp(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
 export function LeaderboardDashboard({
   accessToken,
-  email,
   profile,
-  onSignOut,
 }: LeaderboardDashboardProps) {
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
@@ -93,26 +71,7 @@ export function LeaderboardDashboard({
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-white/6 bg-slate-950/90 px-5 py-4 backdrop-blur sm:px-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <Brand compact />
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-white">{profile.display_name}</p>
-              <p className="text-xs text-slate-500">@{profile.username}</p>
-            </div>
-            <div className="grid size-10 place-items-center rounded-full border border-orange-400/20 bg-orange-400/10 text-sm font-bold text-orange-300">
-              {initials(profile.display_name)}
-            </div>
-            <button className="text-button" type="button" onClick={() => void onSignOut()}>
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
+    <main className="mx-auto max-w-6xl px-5 pb-28 pt-10 sm:px-8 sm:py-14">
         <section className="flex flex-col justify-between gap-7 md:flex-row md:items-end">
           <div>
             <p className="eyebrow">Friends leaderboard</p>
@@ -222,11 +181,9 @@ export function LeaderboardDashboard({
           )}
         </section>
 
-        <footer className="mt-6 flex flex-col justify-between gap-2 text-xs text-slate-600 sm:flex-row">
-          <span>Signed in as {email || profile.username}</span>
+        <footer className="mt-6 text-right text-xs text-slate-600">
           <span>Scores count from {formatTimestamp(profile.scoring_started_at)}</span>
         </footer>
-      </div>
     </main>
   );
 }

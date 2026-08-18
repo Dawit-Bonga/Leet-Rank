@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { Navigate, Route, Routes } from "react-router";
 
+import { AppShell } from "./components/AppShell";
 import { AuthForm } from "./components/AuthForm";
 import { Brand } from "./components/Brand";
+import { FriendsPage } from "./components/FriendsPage";
 import { LeaderboardDashboard } from "./components/LeaderboardDashboard";
 import { OnboardingForm } from "./components/OnboardingForm";
-import { ApiError, getCurrentUser } from "./lib/api";
+import { ProfilePage } from "./components/ProfilePage";
+import { ApiError, getCurrentUser, getFriendRequests } from "./lib/api";
 import { supabase } from "./lib/supabase";
 import type { CurrentUser } from "./types/api";
 
@@ -26,6 +30,7 @@ export default function App() {
   const [account, setAccount] = useState<CurrentUser | null>(null);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -36,6 +41,7 @@ export default function App() {
       if (!nextSession) {
         setAccount(null);
         setAccountError(null);
+        setPendingRequests(0);
       }
     });
     return () => subscription.unsubscribe();
@@ -65,6 +71,21 @@ export default function App() {
   useEffect(() => {
     if (session) void loadAccount();
   }, [session, loadAccount]);
+
+  useEffect(() => {
+    if (!session || !account?.onboarding_completed) return;
+    let active = true;
+    void getFriendRequests(session.access_token)
+      .then((requests) => {
+        if (active) setPendingRequests(requests.incoming.length);
+      })
+      .catch(() => {
+        // The Friends page surfaces request errors; the shell badge is best-effort.
+      });
+    return () => {
+      active = false;
+    };
+  }, [account?.onboarding_completed, session]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -108,11 +129,43 @@ export default function App() {
     );
   }
   return (
-    <LeaderboardDashboard
-      accessToken={session.access_token}
-      email={account.email}
-      profile={account.profile}
-      onSignOut={signOut}
-    />
+    <Routes>
+      <Route
+        element={
+          <AppShell
+            profile={account.profile}
+            pendingRequests={pendingRequests}
+            onSignOut={signOut}
+          />
+        }
+      >
+        <Route
+          index
+          element={
+            <LeaderboardDashboard accessToken={session.access_token} profile={account.profile} />
+          }
+        />
+        <Route
+          path="friends"
+          element={
+            <FriendsPage
+              accessToken={session.access_token}
+              onPendingCountChange={setPendingRequests}
+            />
+          }
+        />
+        <Route
+          path="profile"
+          element={
+            <ProfilePage
+              accessToken={session.access_token}
+              profile={account.profile}
+              onSignOut={signOut}
+            />
+          }
+        />
+      </Route>
+      <Route path="*" element={<Navigate replace to="/" />} />
+    </Routes>
   );
 }

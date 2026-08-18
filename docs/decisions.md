@@ -65,6 +65,9 @@
   user by putting a LeetRank user ID in the URL.
 - An authenticated account without a linked profile may only complete
   onboarding. Other private endpoints return `onboarding_required`.
+- `GET /users/me` is the frontend session-bootstrap endpoint. It returns
+  `profile: null` with HTTP 200 when the authenticated account still needs
+  onboarding, and the full LeetRank profile after onboarding.
 - The public LeetCode submissions lookup remains independent of LeetRank
   identity because it only reads public LeetCode data.
 
