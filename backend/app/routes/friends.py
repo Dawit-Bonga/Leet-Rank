@@ -10,11 +10,15 @@ from app.schemas import (
     FriendRequestItem,
     FriendRequestsResponse,
     FriendsResponse,
+    LeaderboardEntry,
+    LeaderboardPeriod,
+    LeaderboardResponse,
     PublicUserSummary,
 )
 from app.services.friendships import (
     AlreadyFriendsError,
     CannotFriendSelfError,
+    FriendLimitReachedError,
     FriendRequestAlreadyExistsError,
     FriendRequestForbiddenError,
     FriendRequestNotFoundError,
@@ -27,6 +31,7 @@ from app.services.friendships import (
     list_friends,
     remove_friend,
 )
+from app.services.leaderboards import LeaderboardUserNotFoundError, get_friends_leaderboard
 
 
 router = APIRouter(prefix="/users/{user_id}", tags=["friends"])
@@ -150,6 +155,11 @@ def accept_request(
             status_code=409,
             detail={"code": "already_friends", "message": str(exc)},
         ) from exc
+    except FriendLimitReachedError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "friend_limit_reached", "message": str(exc)},
+        ) from exc
     return _summary(friend)
 
 
@@ -225,3 +235,45 @@ def delete_friend(
             detail={"code": "friendship_not_found", "message": str(exc)},
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/leaderboard",
+    response_model=LeaderboardResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def get_leaderboard(
+    user_id: UUID,
+    period: LeaderboardPeriod = LeaderboardPeriod.WEEK,
+    session: Session = Depends(get_db),
+) -> LeaderboardResponse:
+    try:
+        result = get_friends_leaderboard(
+            session,
+            user_id=user_id,
+            period=period.value,
+        )
+    except LeaderboardUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "user_not_found", "message": str(exc)},
+        ) from exc
+
+    return LeaderboardResponse(
+        period=period,
+        as_of=result.as_of,
+        starts_at=result.starts_at,
+        entries=[
+            LeaderboardEntry(
+                rank=entry.rank,
+                user=PublicUserSummary(
+                    id=entry.user_id,
+                    username=entry.username,
+                    display_name=entry.display_name,
+                ),
+                points=entry.points,
+                is_current_user=entry.is_current_user,
+            )
+            for entry in result.entries
+        ],
+    )

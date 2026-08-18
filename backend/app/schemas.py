@@ -140,3 +140,23 @@ class FriendRequestsResponse(BaseModel):
 
 class FriendsResponse(BaseModel):
     friends: list[PublicUserSummary]
+
+
+class LeaderboardPeriod(StrEnum):
+    WEEK = "week"
+    MONTH = "month"
+    ALL_TIME = "all_time"
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    user: PublicUserSummary
+    points: int
+    is_current_user: bool
+
+
+class LeaderboardResponse(BaseModel):
+    period: LeaderboardPeriod
+    as_of: datetime
+    starts_at: datetime | None
+    entries: list[LeaderboardEntry]

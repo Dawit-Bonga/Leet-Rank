@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import FriendRequest, Friendship, User
+
+
+FRIEND_LIMIT = 20
 
 
 class FriendshipUserNotFoundError(Exception):
@@ -34,6 +37,10 @@ class FriendRequestForbiddenError(Exception):
 
 
 class FriendshipNotFoundError(Exception):
+    pass
+
+
+class FriendLimitReachedError(Exception):
     pass
 
 
@@ -141,6 +148,30 @@ def accept_friend_request(
     friend = session.get(User, friend_request.requester_id)
     if friend is None:
         raise FriendshipUserNotFoundError("Requesting user does not exist.")
+
+    # Lock both user rows in a consistent order so simultaneous acceptances
+    # cannot push either account past the limit on PostgreSQL.
+    session.execute(
+        select(User.id)
+        .where(User.id.in_([user_id, friend.id]))
+        .order_by(User.id)
+        .with_for_update()
+    ).all()
+    friend_counts = dict(
+        session.execute(
+            select(Friendship.user_id, func.count())
+            .where(Friendship.user_id.in_([user_id, friend.id]))
+            .group_by(Friendship.user_id)
+        ).all()
+    )
+    limit_reached = any(
+        friend_counts.get(account_id, 0) >= FRIEND_LIMIT
+        for account_id in (user_id, friend.id)
+    )
+    if limit_reached:
+        raise FriendLimitReachedError(
+            "One of these users has reached the 20-friend limit."
+        )
 
     session.add_all(
         [

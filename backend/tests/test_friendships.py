@@ -8,6 +8,7 @@ from app.database import Base
 from app.models import FriendRequest, Friendship, User
 from app.services.friendships import (
     CannotFriendSelfError,
+    FriendLimitReachedError,
     FriendRequestAlreadyExistsError,
     FriendRequestForbiddenError,
     accept_friend_request,
@@ -126,3 +127,33 @@ def test_only_participants_can_accept_or_delete_request():
 
         delete_friend_request(session, user_id=bob.id, request_id=request.id)
         assert session.get(FriendRequest, request.id) is None
+
+
+def test_acceptance_is_rejected_when_either_user_has_twenty_friends():
+    with make_session() as session:
+        alice = add_user(session, "alice")
+        bob = add_user(session, "bob")
+        for index in range(20):
+            existing_friend = add_user(session, f"f{index:02d}")
+            session.add_all(
+                [
+                    Friendship(user_id=bob.id, friend_id=existing_friend.id),
+                    Friendship(user_id=existing_friend.id, friend_id=bob.id),
+                ]
+            )
+        session.commit()
+        request, _ = create_friend_request(
+            session,
+            requester_id=alice.id,
+            target_username="bob",
+        )
+
+        with pytest.raises(FriendLimitReachedError):
+            accept_friend_request(
+                session,
+                user_id=bob.id,
+                request_id=request.id,
+            )
+
+        assert session.get(FriendRequest, request.id) is not None
+        assert session.get(Friendship, (alice.id, bob.id)) is None

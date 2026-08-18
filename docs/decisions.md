@@ -37,6 +37,12 @@
   `as_of` timestamp and the start of each period.
 - Activity is read from `score_events` newest-first. Zero-point cooldown events
   remain visible so users can understand why a submission earned no points.
+- A friends leaderboard contains the requesting user and every accepted friend,
+  including participants with zero points.
+- Ties share competition rank (`1, 1, 3`) and username provides stable display
+  ordering within a tie.
+- The response uses one `as_of` timestamp for every participant. It is computed
+  from stored score events and is not persisted separately.
 
 ## V1 infrastructure
 
@@ -70,6 +76,8 @@
   friends-only leaderboard reads simple.
 - Either participant can remove an accepted friendship. The sender can cancel
   a pending request and the recipient can decline it.
+- Each account can have at most 20 accepted friends. Pending requests do not
+  count toward the limit; acceptance fails if either participant is full.
 - V1 development endpoints still identify the acting user by URL ID. Supabase
   authentication must replace that trust boundary before public deployment.
 

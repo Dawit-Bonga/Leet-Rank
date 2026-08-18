@@ -220,6 +220,15 @@ def test_friend_request_api_flow(onboarding_client):
     assert alice_friends.status_code == 200
     assert alice_friends.json()["friends"][0]["username"] == "bob"
 
+    leaderboard = client.get(f"/users/{alice['id']}/leaderboard?period=week")
+    assert leaderboard.status_code == 200
+    assert leaderboard.json()["period"] == "week"
+    assert [entry["user"]["username"] for entry in leaderboard.json()["entries"]] == [
+        "alice",
+        "bob",
+    ]
+    assert all(entry["rank"] == 1 for entry in leaderboard.json()["entries"])
+
     removed = client.delete(f"/users/{alice['id']}/friends/{bob['id']}")
     assert removed.status_code == 204
     assert client.get(f"/users/{bob['id']}/friends").json() == {"friends": []}
