@@ -7,7 +7,11 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models import User
 from app.schemas import (
+    ActivityItem,
+    ActivityProblem,
     ErrorResponse,
+    FriendProfileResponse,
+    FriendProfileUser,
     FriendRequestCreate,
     FriendRequestItem,
     FriendRequestsResponse,
@@ -16,7 +20,10 @@ from app.schemas import (
     LeaderboardPeriod,
     LeaderboardResponse,
     PublicUserSummary,
+    PeriodScore,
+    ScorePeriods,
 )
+from app.services.friend_profiles import FriendProfileNotFoundError, get_friend_profile
 from app.services.friendships import (
     AlreadyFriendsError,
     CannotFriendSelfError,
@@ -220,6 +227,62 @@ def get_friends(
             detail={"code": "user_not_found", "message": str(exc)},
         ) from exc
     return FriendsResponse(friends=[_summary(friend) for friend in friends])
+
+
+@router.get(
+    "/friends/{friend_id}/profile",
+    response_model=FriendProfileResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def get_accepted_friend_profile(
+    friend_id: UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> FriendProfileResponse:
+    try:
+        result = get_friend_profile(
+            session,
+            viewer_id=current_user.id,
+            friend_id=friend_id,
+        )
+    except FriendProfileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "friend_profile_not_found", "message": str(exc)},
+        ) from exc
+
+    return FriendProfileResponse(
+        user=FriendProfileUser(
+            id=result.user.id,
+            username=result.user.username,
+            display_name=result.user.display_name,
+            leetcode_username=result.user.leetcode_username,
+            weekly_problem_goal=result.user.weekly_problem_goal,
+            scoring_started_at=result.user.scoring_started_at,
+        ),
+        friend_since=result.friend_since,
+        as_of=result.scores.as_of,
+        scores=ScorePeriods(
+            week=PeriodScore(**result.scores.week.__dict__),
+            month=PeriodScore(**result.scores.month.__dict__),
+            all_time=PeriodScore(**result.scores.all_time.__dict__),
+        ),
+        recent_activity=[
+            ActivityItem(
+                id=item.id,
+                problem=ActivityProblem(
+                    title=item.problem_title,
+                    slug=item.problem_slug,
+                    difficulty=item.difficulty,
+                ),
+                points=item.points,
+                reason=item.reason,
+                earned_at=item.earned_at,
+            )
+            for item in result.activity.items
+        ],
+        activity_has_more=result.activity.has_more,
+    )
 
 
 @router.delete(

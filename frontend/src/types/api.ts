@@ -110,3 +110,23 @@ export interface ActivityResponse {
   offset: number;
   has_more: boolean;
 }
+
+export interface FriendProfileResponse {
+  user: {
+    id: string;
+    username: string;
+    display_name: string;
+    leetcode_username: string;
+    weekly_problem_goal: number;
+    scoring_started_at: string;
+  };
+  friend_since: string;
+  as_of: string;
+  scores: {
+    week: PeriodScore;
+    month: PeriodScore;
+    all_time: PeriodScore;
+  };
+  recent_activity: ActivityItem[];
+  activity_has_more: boolean;
+}

@@ -173,9 +173,10 @@ export function LeaderboardDashboard({ accessToken, profile }: LeaderboardDashbo
           ) : leaderboard ? (
             <div className={loading ? "opacity-70 transition-opacity" : "transition-opacity"}>
               {leaderboard.entries.map((entry) => (
-                <div
+                <Link
                   className={`leaderboard-row ${entry.rank <= 3 ? "leaderboard-row-top" : ""} ${entry.rank === 1 ? "leaderboard-row-first" : ""} ${entry.is_current_user ? "leaderboard-row-current" : ""}`}
                   key={entry.user.id}
+                  to={entry.is_current_user ? "/profile" : `/friends/${entry.user.id}`}
                 >
                   <div className="flex items-center">
                     <span className={`rank-badge ${entry.rank === 1 ? "rank-badge-first" : ""}`}>
@@ -205,7 +206,7 @@ export function LeaderboardDashboard({ accessToken, profile }: LeaderboardDashbo
                     <span className="text-xl font-black tabular-nums text-white">{entry.points}</span>
                     <span className="ml-1 text-xs text-slate-500">pts</span>
                   </div>
-                </div>
+                </Link>
               ))}
               {leaderboard.entries.length === 1 && (
                 <div className="flex flex-wrap items-center justify-center gap-2 border-t border-white/6 px-5 py-4 text-xs text-slate-500">

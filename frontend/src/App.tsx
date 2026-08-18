@@ -6,6 +6,7 @@ import { AppShell } from "./components/AppShell";
 import { AuthForm } from "./components/AuthForm";
 import { Brand } from "./components/Brand";
 import { FriendsPage } from "./components/FriendsPage";
+import { FriendProfilePage } from "./components/FriendProfilePage";
 import { LeaderboardDashboard } from "./components/LeaderboardDashboard";
 import { OnboardingForm } from "./components/OnboardingForm";
 import { ProfilePage } from "./components/ProfilePage";
@@ -152,6 +153,10 @@ export default function App() {
               onPendingCountChange={setPendingRequests}
             />
           }
+        />
+        <Route
+          path="friends/:friendId"
+          element={<FriendProfilePage accessToken={session.access_token} />}
         />
         <Route
           path="profile"

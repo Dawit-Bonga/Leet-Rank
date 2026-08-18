@@ -262,6 +262,8 @@ def test_friend_request_api_flow(onboarding_client):
     )
     assert sent.status_code == 201
     assert sent.json()["user"]["username"] == "bob"
+    pending_profile = client.get(f"/users/me/friends/{bob['id']}/profile")
+    assert pending_profile.status_code == 404
 
     provider.auth_user_id = bob_auth_user_id
     pending = client.get("/users/me/friend-requests")
@@ -288,7 +290,23 @@ def test_friend_request_api_flow(onboarding_client):
     ]
     assert all(entry["rank"] == 1 for entry in leaderboard.json()["entries"])
 
+    friend_profile = client.get(f"/users/me/friends/{bob['id']}/profile")
+    assert friend_profile.status_code == 200
+    assert friend_profile.json()["user"] == {
+        "id": bob["id"],
+        "username": "bob",
+        "display_name": "Bob",
+        "leetcode_username": "bob-lc",
+        "weekly_problem_goal": 5,
+        "scoring_started_at": bob["scoring_started_at"],
+    }
+    assert friend_profile.json()["scores"]["week"]["points"] == 0
+    assert friend_profile.json()["recent_activity"] == []
+
     removed = client.delete(f"/users/me/friends/{bob['id']}")
     assert removed.status_code == 204
+    unavailable = client.get(f"/users/me/friends/{bob['id']}/profile")
+    assert unavailable.status_code == 404
+    assert unavailable.json()["detail"]["code"] == "friend_profile_not_found"
     provider.auth_user_id = bob_auth_user_id
     assert client.get("/users/me/friends").json() == {"friends": []}

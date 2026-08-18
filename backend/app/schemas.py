@@ -141,6 +141,24 @@ class FriendsResponse(BaseModel):
     friends: list[PublicUserSummary]
 
 
+class FriendProfileUser(BaseModel):
+    id: UUID
+    username: str
+    display_name: str
+    leetcode_username: str
+    weekly_problem_goal: int
+    scoring_started_at: datetime
+
+
+class FriendProfileResponse(BaseModel):
+    user: FriendProfileUser
+    friend_since: datetime
+    as_of: datetime
+    scores: ScorePeriods
+    recent_activity: list[ActivityItem]
+    activity_has_more: bool
+
+
 class LeaderboardPeriod(StrEnum):
     WEEK = "week"
     MONTH = "month"

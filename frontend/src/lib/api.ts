@@ -2,6 +2,7 @@ import type {
   CurrentUser,
   ActivityResponse,
   FriendRequestItem,
+  FriendProfileResponse,
   FriendRequestsResponse,
   FriendsResponse,
   LeaderboardPeriod,
@@ -114,6 +115,13 @@ export function deleteFriendRequest(
 
 export function getFriends(accessToken: string): Promise<FriendsResponse> {
   return request("/users/me/friends", accessToken);
+}
+
+export function getFriendProfile(
+  accessToken: string,
+  friendId: string,
+): Promise<FriendProfileResponse> {
+  return request(`/users/me/friends/${friendId}/profile`, accessToken);
 }
 
 export function removeFriend(accessToken: string, friendId: string): Promise<void> {

@@ -101,6 +101,11 @@
   a pending request and the recipient can decline it.
 - Each account can have at most 20 accepted friends. Pending requests do not
   count toward the limit; acceptance fails if either participant is full.
+- Accepted friends can open a limited performance profile containing public
+  identity, scoring totals, weekly goal progress data, and recent activity.
+  Authentication details, onboarding answers, sync errors, and the user's
+  broader friends list are not exposed.
+- Removing a friendship immediately removes profile access in both directions.
 
 # Product Rules
 Scoring begins when a LeetCode username is successfully connected.

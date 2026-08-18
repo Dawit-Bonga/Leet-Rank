@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Check, Inbox, Send, UserMinus, UserPlus, UsersRound, X } from "lucide-react";
+import { Link } from "react-router";
 
 import {
   acceptFriendRequest,
@@ -25,8 +26,8 @@ interface FriendsPageProps {
   onPendingCountChange: (count: number) => void;
 }
 
-function Person({ user }: { user: PublicUserSummary }) {
-  return (
+function Person({ user, profileHref }: { user: PublicUserSummary; profileHref?: string }) {
+  const content = (
     <div className="flex min-w-0 items-center gap-3">
       <UserAvatar name={user.display_name} />
       <div className="min-w-0">
@@ -35,6 +36,15 @@ function Person({ user }: { user: PublicUserSummary }) {
       </div>
     </div>
   );
+  return profileHref ? (
+    <Link
+      aria-label={`View ${user.display_name}’s profile`}
+      className="min-w-0 flex-1 rounded-lg transition hover:opacity-85 focus:outline-none focus:ring-4 focus:ring-orange-400/10"
+      to={profileHref}
+    >
+      {content}
+    </Link>
+  ) : content;
 }
 
 function EmptyMessage({ children }: { children: string }) {
@@ -214,7 +224,7 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
               {friends?.friends.length ? (
                 friends.friends.map((friend) => (
                   <div className="person-row" key={friend.id}>
-                    <Person user={friend} />
+                    <Person profileHref={`/friends/${friend.id}`} user={friend} />
                     <button
                       aria-label={`Remove ${friend.display_name}`}
                       className="compact-secondary-button"
