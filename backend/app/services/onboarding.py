@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Protocol
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -23,10 +24,15 @@ class LeetRankUsernameTakenError(Exception):
     pass
 
 
+class AuthUserAlreadyOnboardedError(Exception):
+    pass
+
+
 def create_onboarded_user(
     session: Session,
     provider: LeetCodeUserProvider,
     *,
+    auth_user_id: UUID,
     username: str,
     display_name: str,
     leetcode_username: str,
@@ -35,6 +41,14 @@ def create_onboarded_user(
     weekly_problem_goal: int,
     now: datetime | None = None,
 ) -> tuple[User, UserSyncState]:
+    existing_profile = session.scalar(
+        select(User).where(User.auth_user_id == auth_user_id)
+    )
+    if existing_profile is not None:
+        raise AuthUserAlreadyOnboardedError(
+            "This authenticated account already has a LeetRank profile."
+        )
+
     normalized_username = username.strip().lower()
     username_duplicate = session.scalar(
         select(User).where(User.username == normalized_username)
@@ -68,6 +82,7 @@ def create_onboarded_user(
         scoring_start = scoring_start.replace(tzinfo=UTC)
 
     user = User(
+        auth_user_id=auth_user_id,
         username=normalized_username,
         leetcode_username=canonical_username,
         display_name=display_name.strip(),
@@ -87,6 +102,10 @@ def create_onboarded_user(
         session.commit()
     except IntegrityError as exc:
         session.rollback()
+        if session.scalar(select(User).where(User.auth_user_id == auth_user_id)) is not None:
+            raise AuthUserAlreadyOnboardedError(
+                "This authenticated account already has a LeetRank profile."
+            ) from exc
         if session.scalar(select(User).where(User.username == normalized_username)) is not None:
             raise LeetRankUsernameTakenError("That LeetRank username is already taken.") from exc
         raise LeetCodeUsernameTakenError(

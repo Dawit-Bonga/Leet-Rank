@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth import get_current_user
+from app.models import User
 from app.schemas import (
     ErrorResponse,
     FriendRequestCreate,
@@ -34,7 +36,7 @@ from app.services.friendships import (
 from app.services.leaderboards import LeaderboardUserNotFoundError, get_friends_leaderboard
 
 
-router = APIRouter(prefix="/users/{user_id}", tags=["friends"])
+router = APIRouter(prefix="/users/me", tags=["friends"])
 
 
 def _summary(user) -> PublicUserSummary:
@@ -52,14 +54,14 @@ def _summary(user) -> PublicUserSummary:
     responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 def send_friend_request(
-    user_id: UUID,
     request: FriendRequestCreate,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> FriendRequestItem:
     try:
         friend_request, target = create_friend_request(
             session,
-            requester_id=user_id,
+            requester_id=current_user.id,
             target_username=request.username,
         )
     except FriendshipUserNotFoundError as exc:
@@ -96,11 +98,11 @@ def send_friend_request(
     responses={404: {"model": ErrorResponse}},
 )
 def get_friend_requests(
-    user_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> FriendRequestsResponse:
     try:
-        incoming, outgoing = list_friend_requests(session, user_id=user_id)
+        incoming, outgoing = list_friend_requests(session, user_id=current_user.id)
     except FriendshipUserNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -129,12 +131,16 @@ def get_friend_requests(
     },
 )
 def accept_request(
-    user_id: UUID,
     request_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> PublicUserSummary:
     try:
-        friend = accept_friend_request(session, user_id=user_id, request_id=request_id)
+        friend = accept_friend_request(
+            session,
+            user_id=current_user.id,
+            request_id=request_id,
+        )
     except FriendshipUserNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -169,12 +175,16 @@ def accept_request(
     responses={403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
 )
 def decline_or_cancel_request(
-    user_id: UUID,
     request_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> Response:
     try:
-        delete_friend_request(session, user_id=user_id, request_id=request_id)
+        delete_friend_request(
+            session,
+            user_id=current_user.id,
+            request_id=request_id,
+        )
     except FriendshipUserNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -199,11 +209,11 @@ def decline_or_cancel_request(
     responses={404: {"model": ErrorResponse}},
 )
 def get_friends(
-    user_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> FriendsResponse:
     try:
-        friends = list_friends(session, user_id=user_id)
+        friends = list_friends(session, user_id=current_user.id)
     except FriendshipUserNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -218,12 +228,12 @@ def get_friends(
     responses={404: {"model": ErrorResponse}},
 )
 def delete_friend(
-    user_id: UUID,
     friend_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> Response:
     try:
-        remove_friend(session, user_id=user_id, friend_id=friend_id)
+        remove_friend(session, user_id=current_user.id, friend_id=friend_id)
     except FriendshipUserNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -243,14 +253,14 @@ def delete_friend(
     responses={404: {"model": ErrorResponse}},
 )
 def get_leaderboard(
-    user_id: UUID,
     period: LeaderboardPeriod = LeaderboardPeriod.WEEK,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> LeaderboardResponse:
     try:
         result = get_friends_leaderboard(
             session,
-            user_id=user_id,
+            user_id=current_user.id,
             period=period.value,
         )
     except LeaderboardUserNotFoundError as exc:

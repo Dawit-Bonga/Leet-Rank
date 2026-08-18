@@ -54,6 +54,20 @@
 - Public synchronization requests at most the latest 20 accepted submissions
   and uses their real LeetCode submission IDs for deduplication.
 
+## V1 authentication
+
+- Supabase Auth owns signup, login, email confirmation, sessions, and access
+  tokens. LeetRank does not store passwords.
+- FastAPI validates each bearer token with the Supabase Auth user endpoint
+  before trusting its user ID.
+- The verified Supabase user ID maps to the unique `users.auth_user_id` column.
+- User-owned operations use `/users/me`; the caller cannot choose the acting
+  user by putting a LeetRank user ID in the URL.
+- An authenticated account without a linked profile may only complete
+  onboarding. Other private endpoints return `onboarding_required`.
+- The public LeetCode submissions lookup remains independent of LeetRank
+  identity because it only reads public LeetCode data.
+
 ## V1 onboarding
 
 - Scoring starts only after the submitted LeetCode username is validated.
@@ -63,8 +77,8 @@
   LeetRank user.
 - Username validation proves that the LeetCode account exists, not that the
   LeetRank user owns it. Ownership verification is deferred beyond V1.
-- Until Supabase authentication is connected, development uses `POST /users`.
-  It will later become the authenticated `POST /users/me/onboarding` flow.
+- Onboarding uses authenticated `POST /users/me/onboarding` and permanently
+  links the new profile to that Supabase Auth account.
 
 ## V1 friendships
 
@@ -78,8 +92,6 @@
   a pending request and the recipient can decline it.
 - Each account can have at most 20 accepted friends. Pending requests do not
   count toward the limit; acceptance fails if either participant is full.
-- V1 development endpoints still identify the acting user by URL ID. Supabase
-  authentication must replace that trust boundary before public deployment.
 
 # Product Rules
 Scoring begins when a LeetCode username is successfully connected.

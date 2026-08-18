@@ -1,10 +1,11 @@
 from collections.abc import Generator
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth import get_auth_identity, get_current_user
+from app.models import User
 from app.schemas import (
     ActivityItem,
     ActivityProblem,
@@ -26,7 +27,9 @@ from app.services.leetcode import (
     UserNotFoundError,
     fetch_recent_accepted_submissions,
 )
+from app.services.auth import AuthIdentity
 from app.services.onboarding import (
+    AuthUserAlreadyOnboardedError,
     LeetCodeUsernameTakenError,
     LeetRankUsernameTakenError,
     create_onboarded_user,
@@ -48,7 +51,7 @@ def get_leetcode_client() -> Generator[LeetCodeGraphQLClient, None, None]:
 
 
 @router.post(
-    "",
+    "/me/onboarding",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
@@ -62,11 +65,13 @@ def create_user(
     request: UserOnboardingRequest,
     session: Session = Depends(get_db),
     leetcode_client: LeetCodeGraphQLClient = Depends(get_leetcode_client),
+    identity: AuthIdentity = Depends(get_auth_identity),
 ) -> UserResponse:
     try:
         user, sync_state = create_onboarded_user(
             session,
             leetcode_client,
+            auth_user_id=identity.id,
             username=request.username,
             display_name=request.display_name,
             leetcode_username=request.leetcode_username,
@@ -74,6 +79,11 @@ def create_user(
             leetcode_experience=request.leetcode_experience.value,
             weekly_problem_goal=request.weekly_problem_goal,
         )
+    except AuthUserAlreadyOnboardedError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "profile_exists", "message": str(exc)},
+        ) from exc
     except LeetRankUsernameTakenError as exc:
         raise HTTPException(
             status_code=409,
@@ -120,7 +130,7 @@ def create_user(
 
 
 @router.post(
-    "/{user_id}/sync",
+    "/me/sync",
     response_model=UserSyncResponse,
     responses={
         404: {"model": ErrorResponse},
@@ -130,7 +140,7 @@ def create_user(
     },
 )
 def sync_user(
-    user_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
     leetcode_client: LeetCodeGraphQLClient = Depends(get_leetcode_client),
 ) -> UserSyncResponse:
@@ -138,7 +148,7 @@ def sync_user(
         result = sync_user_submissions(
             session,
             leetcode_client,
-            user_id=user_id,
+            user_id=current_user.id,
         )
     except SyncUserNotFoundError as exc:
         raise HTTPException(
@@ -170,16 +180,16 @@ def sync_user(
 
 
 @router.get(
-    "/{user_id}/scores",
+    "/me/scores",
     response_model=UserScoresResponse,
     responses={404: {"model": ErrorResponse}},
 )
 def get_scores(
-    user_id: UUID,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> UserScoresResponse:
     try:
-        result = get_user_scores(session, user_id=user_id)
+        result = get_user_scores(session, user_id=current_user.id)
     except ScoreUserNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -198,12 +208,12 @@ def get_scores(
 
 
 @router.get(
-    "/{user_id}/activity",
+    "/me/activity",
     response_model=UserActivityResponse,
     responses={404: {"model": ErrorResponse}},
 )
 def get_activity(
-    user_id: UUID,
+    current_user: User = Depends(get_current_user),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_db),
@@ -211,7 +221,7 @@ def get_activity(
     try:
         result = get_user_activity(
             session,
-            user_id=user_id,
+            user_id=current_user.id,
             limit=limit,
             offset=offset,
         )
