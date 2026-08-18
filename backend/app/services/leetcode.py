@@ -9,16 +9,36 @@ import httpx
 
 
 LEETCODE_GRAPHQL_URL = "https://leetcode.com/graphql"
-ALFA_API_URL = "https://alfa-leetcode-api.onrender.com"
+PUBLIC_SUBMISSION_LIMIT = 20
 
-USER_SUBMISSIONS_QUERY = """
-query userSubmissions($username: String!, $limit: Int!) {
+USER_PROFILE_QUERY = """
+query userProfile($username: String!) {
+  matchedUser(username: $username) {
+    username
+  }
+}
+"""
+
+ACCEPTED_SUBMISSIONS_QUERY = """
+query recentAcceptedSubmissions($username: String!, $limit: Int!) {
   matchedUser(username: $username) {
     username
   }
   recentAcSubmissionList(username: $username, limit: $limit) {
+    id
     title
+    titleSlug
     timestamp
+  }
+}
+"""
+
+PROBLEM_DETAILS_QUERY = """
+query problemDetails($titleSlug: String!) {
+  question(titleSlug: $titleSlug) {
+    title
+    titleSlug
+    difficulty
   }
 }
 """
@@ -60,78 +80,112 @@ class ProblemDetails:
     difficulty: str
 
 
-class AlfaLeetCodeClient:
+class LeetCodeGraphQLClient:
     def __init__(
         self,
         *,
-        base_url: str = ALFA_API_URL,
+        endpoint: str = LEETCODE_GRAPHQL_URL,
         timeout_seconds: float = 10.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        self._endpoint = endpoint
         self._client = httpx.Client(
-            base_url=base_url,
             timeout=timeout_seconds,
             transport=transport,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Referer": "https://leetcode.com/",
+                "User-Agent": "LeetRank/0.1",
+            },
         )
 
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "AlfaLeetCodeClient":
+    def __enter__(self) -> "LeetCodeGraphQLClient":
         return self
 
     def __exit__(self, *_: object) -> None:
         self.close()
 
-    def _get_json(self, path: str, *, params: dict[str, int | str] | None = None) -> Any:
+    def _graphql(self, query: str, variables: dict[str, int | str]) -> dict[str, Any]:
         try:
-            response = self._client.get(path, params=params)
+            response = self._client.post(
+                self._endpoint,
+                json={"query": query, "variables": variables},
+            )
         except httpx.RequestError as exc:
-            raise UpstreamUnavailableError("Could not reach the LeetCode provider.") from exc
+            raise UpstreamUnavailableError("Could not reach LeetCode.") from exc
 
-        if response.status_code == 404:
-            raise UserNotFoundError("LeetCode user or problem does not exist.")
         if response.status_code == 429:
-            raise UpstreamRateLimitedError("LeetCode provider rate limit reached.")
+            raise UpstreamRateLimitedError("LeetCode rate limit reached.")
         if response.status_code >= 500:
-            raise UpstreamUnavailableError("LeetCode provider is currently unavailable.")
+            raise UpstreamUnavailableError("LeetCode is currently unavailable.")
         if response.status_code != 200:
-            raise UpstreamBadResponseError("Unexpected status from LeetCode provider.")
+            raise UpstreamBadResponseError("Unexpected status from LeetCode.")
+
         try:
-            return response.json()
+            body = response.json()
         except json.JSONDecodeError as exc:
-            raise UpstreamBadResponseError("LeetCode provider returned invalid JSON.") from exc
+            raise UpstreamBadResponseError("LeetCode returned invalid JSON.") from exc
+
+        if not isinstance(body, dict):
+            raise UpstreamBadResponseError("LeetCode response is malformed.")
+        if body.get("errors"):
+            raise UpstreamBadResponseError("LeetCode returned a GraphQL error.")
+        data = body.get("data")
+        if not isinstance(data, dict):
+            raise UpstreamBadResponseError("LeetCode response missing data object.")
+        return data
 
     def get_user(self, username: str) -> LeetCodeUser:
-        body = self._get_json(f"/{username}")
-        if not isinstance(body, dict):
+        data = self._graphql(USER_PROFILE_QUERY, {"username": username})
+        matched_user = data.get("matchedUser")
+        if matched_user is None:
+            raise UserNotFoundError("LeetCode user does not exist.")
+        if not isinstance(matched_user, dict):
             raise UpstreamBadResponseError("LeetCode profile payload is malformed.")
-        canonical_username = body.get("username")
+        canonical_username = matched_user.get("username")
         if not isinstance(canonical_username, str) or not canonical_username:
             raise UpstreamBadResponseError("LeetCode profile is missing a username.")
         return LeetCodeUser(username=canonical_username)
 
-    def get_accepted_submissions(self, username: str, limit: int = 50) -> list[AcceptedSubmission]:
-        body = self._get_json(f"/{username}/acSubmission", params={"limit": limit})
-        if not isinstance(body, dict):
-            raise UpstreamBadResponseError("Accepted submissions payload is malformed.")
-        raw_submissions = body.get("submission")
+    def get_accepted_submissions(
+        self,
+        username: str,
+        limit: int = PUBLIC_SUBMISSION_LIMIT,
+    ) -> list[AcceptedSubmission]:
+        if not 1 <= limit <= PUBLIC_SUBMISSION_LIMIT:
+            raise ValueError(
+                f"Public submission limit must be between 1 and {PUBLIC_SUBMISSION_LIMIT}."
+            )
+
+        data = self._graphql(
+            ACCEPTED_SUBMISSIONS_QUERY,
+            {"username": username, "limit": limit},
+        )
+        if data.get("matchedUser") is None:
+            raise UserNotFoundError("LeetCode user does not exist.")
+        raw_submissions = data.get("recentAcSubmissionList")
+        if raw_submissions is None:
+            return []
         if not isinstance(raw_submissions, list):
-            raise UpstreamBadResponseError("Accepted submissions list is missing.")
+            raise UpstreamBadResponseError("LeetCode submissions payload is malformed.")
 
         submissions: list[AcceptedSubmission] = []
         for item in raw_submissions:
             if not isinstance(item, dict):
-                raise UpstreamBadResponseError("Accepted submission entry is malformed.")
+                raise UpstreamBadResponseError("LeetCode submission entry is malformed.")
             try:
                 external_id = str(item["id"])
                 title = item["title"]
                 slug = item["titleSlug"]
                 timestamp = int(item["timestamp"])
             except (KeyError, TypeError, ValueError) as exc:
-                raise UpstreamBadResponseError("Accepted submission fields are malformed.") from exc
+                raise UpstreamBadResponseError("LeetCode submission fields are malformed.") from exc
             if not external_id or not isinstance(title, str) or not isinstance(slug, str):
-                raise UpstreamBadResponseError("Accepted submission fields are malformed.")
+                raise UpstreamBadResponseError("LeetCode submission fields are malformed.")
             submissions.append(
                 AcceptedSubmission(
                     external_id=external_id,
@@ -143,79 +197,34 @@ class AlfaLeetCodeClient:
         return submissions
 
     def get_problem(self, title_slug: str) -> ProblemDetails:
-        body = self._get_json("/select", params={"titleSlug": title_slug})
-        if not isinstance(body, dict):
-            raise UpstreamBadResponseError("Problem payload is malformed.")
-        title = body.get("questionTitle") or body.get("title")
-        slug = body.get("titleSlug") or title_slug
-        difficulty = body.get("difficulty")
-        if not isinstance(title, str) or not isinstance(slug, str) or difficulty not in {"Easy", "Medium", "Hard", "EASY", "MEDIUM", "HARD"}:
-            raise UpstreamBadResponseError("Problem fields are malformed.")
+        data = self._graphql(PROBLEM_DETAILS_QUERY, {"titleSlug": title_slug})
+        question = data.get("question")
+        if not isinstance(question, dict):
+            raise UpstreamBadResponseError("LeetCode problem does not exist or is malformed.")
+        title = question.get("title")
+        slug = question.get("titleSlug")
+        difficulty = question.get("difficulty")
+        if (
+            not isinstance(title, str)
+            or not isinstance(slug, str)
+            or difficulty not in {"Easy", "Medium", "Hard", "EASY", "MEDIUM", "HARD"}
+        ):
+            raise UpstreamBadResponseError("LeetCode problem fields are malformed.")
         return ProblemDetails(slug=slug, title=title, difficulty=difficulty.upper())
 
 
 def fetch_recent_accepted_submissions(
     username: str,
-    limit: int = 20,
+    limit: int = PUBLIC_SUBMISSION_LIMIT,
     timeout_seconds: float = 10.0,
 ) -> list[dict[str, int | str]]:
-    payload = {
-        "query": USER_SUBMISSIONS_QUERY,
-        "variables": {"username": username, "limit": limit},
-    }
-
-    try:
-        response = httpx.post(
-            LEETCODE_GRAPHQL_URL,
-            json=payload,
-            timeout=timeout_seconds,
-            headers={"Content-Type": "application/json"},
-        )
-    except httpx.RequestError as exc:
-        raise UpstreamUnavailableError("Could not reach LeetCode.") from exc
-
-    if response.status_code >= 500:
-        raise UpstreamUnavailableError("LeetCode is currently unavailable.")
-
-    if response.status_code != 200:
-        raise UpstreamBadResponseError("Unexpected status from LeetCode.")
-
-    try:
-        body = response.json()
-    except json.JSONDecodeError as exc:
-        raise UpstreamBadResponseError("LeetCode returned invalid JSON.") from exc
-
-    data = body.get("data")
-    if not isinstance(data, dict):
-        raise UpstreamBadResponseError("LeetCode response missing data object.")
-
-    if data.get("matchedUser") is None:
-        raise UserNotFoundError("LeetCode user does not exist.")
-
-    raw_submissions = data.get("recentAcSubmissionList")
-    if raw_submissions is None:
-        return []
-    if not isinstance(raw_submissions, list):
-        raise UpstreamBadResponseError("LeetCode submissions payload is malformed.")
-
-    parsed_submissions: list[dict[str, int | str]] = []
-    for item in raw_submissions:
-        if not isinstance(item, dict):
-            raise UpstreamBadResponseError("Submission entry is malformed.")
-
-        title = item.get("title")
-        timestamp = item.get("timestamp")
-
-        if not isinstance(title, str):
-            raise UpstreamBadResponseError("Submission title is missing.")
-        if timestamp is None:
-            raise UpstreamBadResponseError("Submission timestamp is missing.")
-
-        try:
-            parsed_timestamp = int(timestamp)
-        except (TypeError, ValueError) as exc:
-            raise UpstreamBadResponseError("Submission timestamp is invalid.") from exc
-
-        parsed_submissions.append({"title": title, "timestamp": parsed_timestamp})
-
-    return parsed_submissions
+    """Compatibility helper for the prototype submissions endpoint."""
+    with LeetCodeGraphQLClient(timeout_seconds=timeout_seconds) as client:
+        submissions = client.get_accepted_submissions(username, limit=limit)
+    return [
+        {
+            "title": submission.problem_title,
+            "timestamp": int(submission.submitted_at.timestamp()),
+        }
+        for submission in submissions
+    ]

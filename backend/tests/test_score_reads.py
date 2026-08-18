@@ -117,6 +117,28 @@ def test_activity_is_newest_first_includes_zero_points_and_paginates():
         assert second_page.has_more is False
 
 
+def test_score_snapshot_excludes_events_after_as_of():
+    with make_session() as session:
+        user = seed_scores(session)
+        problem = session.query(Problem).filter_by(leetcode_slug="two-sum").one()
+        add_scored_event(
+            session,
+            user,
+            problem,
+            external_id="future",
+            earned_at=AS_OF + timedelta(minutes=1),
+            points=100,
+            reason="REVIEW",
+        )
+        session.commit()
+
+        result = get_user_scores(session, user_id=user.id, as_of=AS_OF)
+
+        assert result.week.points == 10
+        assert result.month.points == 30
+        assert result.all_time.points == 60
+
+
 def test_score_reads_require_an_existing_user():
     from uuid import uuid4
 

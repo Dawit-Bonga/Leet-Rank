@@ -71,14 +71,38 @@ def get_user_scores(
     totals = session.execute(
         select(
             func.coalesce(
-                func.sum(case((ScoreEvent.earned_at.between(week_start, as_of), ScoreEvent.points), else_=0)),
+                func.sum(
+                    case(
+                        (
+                            ScoreEvent.earned_at.between(week_start, calculated_at),
+                            ScoreEvent.points,
+                        ),
+                        else_=0,
+                    )
+                ),
                 0,
             ),
             func.coalesce(
-                func.sum(case((ScoreEvent.earned_at.between(month_start, as_of), ScoreEvent.points), else_=0)),
+                func.sum(
+                    case(
+                        (
+                            ScoreEvent.earned_at.between(month_start, calculated_at),
+                            ScoreEvent.points,
+                        ),
+                        else_=0,
+                    )
+                ),
                 0,
             ),
-            func.coalesce(func.sum(ScoreEvent.points), 0),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (ScoreEvent.earned_at <= calculated_at, ScoreEvent.points),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
         ).where(ScoreEvent.user_id == user_id)
     ).one()
 

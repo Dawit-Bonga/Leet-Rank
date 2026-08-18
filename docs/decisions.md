@@ -43,8 +43,10 @@
 - FastAPI and the synchronization process share one application codebase.
 - PostgreSQL is the application source of truth.
 - No Redis, task queue, or precomputed leaderboard is needed for V1.
-- Alfa LeetCode API responses are normalized behind the LeetCode service so
-  the provider can be replaced without changing scoring code.
+- Direct LeetCode GraphQL responses are normalized behind the LeetCode service
+  so upstream query changes do not affect scoring code.
+- Public synchronization requests at most the latest 20 accepted submissions
+  and uses their real LeetCode submission IDs for deduplication.
 
 ## V1 onboarding
 

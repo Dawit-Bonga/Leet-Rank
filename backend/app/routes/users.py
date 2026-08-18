@@ -19,7 +19,7 @@ from app.schemas import (
     UserSyncResponse,
 )
 from app.services.leetcode import (
-    AlfaLeetCodeClient,
+    LeetCodeGraphQLClient,
     UpstreamBadResponseError,
     UpstreamRateLimitedError,
     UpstreamUnavailableError,
@@ -38,8 +38,8 @@ from app.services.submission_sync import (
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-def get_leetcode_client() -> Generator[AlfaLeetCodeClient, None, None]:
-    with AlfaLeetCodeClient() as client:
+def get_leetcode_client() -> Generator[LeetCodeGraphQLClient, None, None]:
+    with LeetCodeGraphQLClient() as client:
         yield client
 
 
@@ -57,7 +57,7 @@ def get_leetcode_client() -> Generator[AlfaLeetCodeClient, None, None]:
 def create_user(
     request: UserOnboardingRequest,
     session: Session = Depends(get_db),
-    leetcode_client: AlfaLeetCodeClient = Depends(get_leetcode_client),
+    leetcode_client: LeetCodeGraphQLClient = Depends(get_leetcode_client),
 ) -> UserResponse:
     try:
         user, sync_state = create_onboarded_user(
@@ -121,7 +121,7 @@ def create_user(
 def sync_user(
     user_id: UUID,
     session: Session = Depends(get_db),
-    leetcode_client: AlfaLeetCodeClient = Depends(get_leetcode_client),
+    leetcode_client: LeetCodeGraphQLClient = Depends(get_leetcode_client),
 ) -> UserSyncResponse:
     try:
         result = sync_user_submissions(

@@ -32,7 +32,7 @@ class SyncResult:
 
 
 class SubmissionProvider(Protocol):
-    def get_accepted_submissions(self, username: str, limit: int = 50) -> list[AcceptedSubmission]: ...
+    def get_accepted_submissions(self, username: str, limit: int = 20) -> list[AcceptedSubmission]: ...
 
     def get_problem(self, title_slug: str) -> ProblemDetails: ...
 
@@ -136,7 +136,7 @@ def sync_user_submissions(
     provider: SubmissionProvider,
     *,
     user_id: uuid.UUID,
-    limit: int = 50,
+    limit: int = 20,
     now: datetime | None = None,
 ) -> SyncResult:
     user = session.get(User, user_id)

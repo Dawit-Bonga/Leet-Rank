@@ -11,7 +11,7 @@ LeetCode synchronization is a separate write path:
 ```text
 manual refresh / scheduler
     -> submission sync service
-    -> Alfa LeetCode API
+    -> LeetCode GraphQL
     -> PostgreSQL
 ```
 
