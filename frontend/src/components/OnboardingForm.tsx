@@ -75,7 +75,7 @@ export function OnboardingForm({
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-5 py-8 sm:px-8">
+    <main className="app-background min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-4xl">
         <header className="flex items-center justify-between">
           <Brand compact />
@@ -84,7 +84,7 @@ export function OnboardingForm({
           </button>
         </header>
 
-        <section className="mt-12 rounded-3xl border border-white/8 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 sm:p-10">
+        <section className="panel mt-12 rounded-3xl p-6 sm:p-10">
           <div className="max-w-2xl">
             <p className="eyebrow">One last step</p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-white">

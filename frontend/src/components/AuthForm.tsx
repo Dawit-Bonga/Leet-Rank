@@ -71,7 +71,7 @@ export function AuthForm() {
         <p className="relative z-10 text-sm text-slate-600">Built for progress, not prestige.</p>
       </section>
 
-      <section className="flex min-h-screen items-center justify-center bg-slate-900 px-5 py-12 sm:px-10">
+      <section className="flex min-h-screen items-center justify-center bg-slate-900/78 px-5 py-12 sm:px-10">
         <div className="w-full max-w-md">
           <div className="mb-10 lg:hidden">
             <Brand />

@@ -124,6 +124,6 @@ export function getScores(accessToken: string): Promise<ScoresResponse> {
   return request("/users/me/scores", accessToken);
 }
 
-export function getActivity(accessToken: string): Promise<ActivityResponse> {
-  return request("/users/me/activity?limit=10", accessToken);
+export function getActivity(accessToken: string, limit = 10): Promise<ActivityResponse> {
+  return request(`/users/me/activity?limit=${limit}`, accessToken);
 }

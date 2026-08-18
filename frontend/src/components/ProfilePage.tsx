@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
+import { Award, CalendarDays, Code2, LogOut, Target, Zap } from "lucide-react";
 
 import { ApiError, getActivity, getFriends, getScores } from "../lib/api";
-import { formatDate, formatTimestamp, initials } from "../lib/format";
+import { countRecentActivity, formatDate, readableLabel } from "../lib/format";
 import type {
   ActivityResponse,
   FriendsResponse,
   ScoresResponse,
   UserProfile,
 } from "../types/api";
+import { ActivityFeed } from "./ActivityFeed";
+import { SyncStatus } from "./SyncStatus";
+import { UserAvatar } from "./UserAvatar";
+import { WeeklyGoalProgress } from "./WeeklyGoalProgress";
 
 interface ProfilePageProps {
   accessToken: string;
@@ -15,196 +20,250 @@ interface ProfilePageProps {
   onSignOut: () => Promise<void>;
 }
 
-function readableLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+function ProfileDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/6 bg-slate-950/35 px-4 py-3">
+      <dt className="text-[0.65rem] font-extrabold uppercase tracking-[0.13em] text-slate-600">
+        {label}
+      </dt>
+      <dd className="mt-1.5 truncate text-sm font-bold text-slate-200">{value}</dd>
+    </div>
+  );
 }
-
-const difficultyStyles = {
-  EASY: "bg-emerald-400/10 text-emerald-300",
-  MEDIUM: "bg-amber-400/10 text-amber-300",
-  HARD: "bg-red-400/10 text-red-300",
-};
 
 export function ProfilePage({ accessToken, profile, onSignOut }: ProfilePageProps) {
   const [scores, setScores] = useState<ScoresResponse | null>(null);
   const [activity, setActivity] = useState<ActivityResponse | null>(null);
   const [friends, setFriends] = useState<FriendsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [scoresLoading, setScoresLoading] = useState(true);
+  const [scoresFailed, setScoresFailed] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityFailed, setActivityFailed] = useState(false);
+  const [friendsLoading, setFriendsLoading] = useState(true);
+  const [friendsFailed, setFriendsFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    async function loadProfileDetails() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [scoreData, activityData, friendData] = await Promise.all([
-          getScores(accessToken),
-          getActivity(accessToken),
-          getFriends(accessToken),
-        ]);
-        if (!active) return;
-        setScores(scoreData);
-        setActivity(activityData);
-        setFriends(friendData);
-      } catch (caughtError) {
-        if (!active) return;
-        setError(
-          caughtError instanceof ApiError
-            ? caughtError.message
-            : "Could not load your profile details.",
-        );
-      } finally {
-        if (active) setLoading(false);
-      }
+    setError(null);
+
+    function reportError(caughtError: unknown) {
+      if (!active) return;
+      setError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "Could not load all profile details.",
+      );
     }
-    void loadProfileDetails();
+
+    setScoresLoading(true);
+    setScoresFailed(false);
+    void getScores(accessToken)
+      .then((result) => {
+        if (active) setScores(result);
+      })
+      .catch((caughtError) => {
+        if (active) setScoresFailed(true);
+        reportError(caughtError);
+      })
+      .finally(() => {
+        if (active) setScoresLoading(false);
+      });
+
+    setActivityLoading(true);
+    setActivityFailed(false);
+    void getActivity(accessToken, 100)
+      .then((result) => {
+        if (active) setActivity(result);
+      })
+      .catch((caughtError) => {
+        if (active) setActivityFailed(true);
+        reportError(caughtError);
+      })
+      .finally(() => {
+        if (active) setActivityLoading(false);
+      });
+
+    setFriendsLoading(true);
+    setFriendsFailed(false);
+    void getFriends(accessToken)
+      .then((result) => {
+        if (active) setFriends(result);
+      })
+      .catch((caughtError) => {
+        if (active) setFriendsFailed(true);
+        reportError(caughtError);
+      })
+      .finally(() => {
+        if (active) setFriendsLoading(false);
+      });
+
     return () => {
       active = false;
     };
   }, [accessToken]);
 
-  const scoreCards = scores
-    ? [
-        { label: "Past week", points: scores.scores.week.points },
-        { label: "Past month", points: scores.scores.month.points },
-        { label: "All time", points: scores.scores.all_time.points },
-      ]
-    : [];
+  const weeklyCompleted = countRecentActivity(
+    activity?.items.map((item) => item.earned_at) ?? [],
+    7,
+    scores?.as_of,
+  );
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pb-28 pt-10 sm:px-8 sm:py-14">
-      <section className="flex flex-col gap-6 rounded-3xl border border-white/8 bg-slate-900/70 p-6 sm:flex-row sm:items-center sm:p-8">
-        <div className="grid size-20 shrink-0 place-items-center rounded-full border border-orange-400/20 bg-orange-400/10 text-2xl font-black text-orange-300">
-          {initials(profile.display_name)}
-        </div>
+    <main className="page-container">
+      <section className="panel panel-accent flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
+        <UserAvatar highlighted name={profile.display_name} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="eyebrow">Your profile</p>
-          <h1 className="mt-2 truncate text-3xl font-black tracking-tight sm:text-4xl">
-            {profile.display_name}
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">@{profile.username}</p>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="truncate text-2xl font-black tracking-tight text-white sm:text-3xl">
+              {profile.display_name}
+            </h1>
+            <p className="text-sm font-semibold text-slate-500">@{profile.username}</p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/7 bg-white/4 px-2.5 py-1 text-[0.68rem] font-bold text-slate-400">
+              {readableLabel(profile.primary_goal)}
+            </span>
+            <span className="rounded-full border border-white/7 bg-white/4 px-2.5 py-1 text-[0.68rem] font-bold text-slate-400">
+              {readableLabel(profile.leetcode_experience)}
+            </span>
+          </div>
         </div>
-        <button className="secondary-button" type="button" onClick={() => void onSignOut()}>
-          Sign out
-        </button>
+        <SyncStatus profile={profile} />
       </section>
 
-      {error && <div className="error-banner mt-6">{error}</div>}
+      {error && <div className="error-banner mt-4">{error}</div>}
 
-      {loading ? (
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {[0, 1, 2].map((item) => (
-            <div className="h-32 animate-pulse rounded-2xl bg-white/4" key={item} />
-          ))}
-        </div>
-      ) : (
-        <>
-          <section className="mt-8 grid gap-4 sm:grid-cols-3">
-            {scoreCards.map((score) => (
-              <div className="stat-card" key={score.label}>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                  {score.label}
+      <section className="mt-5 grid gap-3 md:grid-cols-[1.35fr_0.825fr_0.825fr]">
+        <div className="metric-card metric-card-primary min-h-36">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="metric-label">Past week</p>
+              {scoresLoading ? (
+                <div className="mt-3 h-9 w-24 animate-pulse rounded-lg bg-white/5" />
+              ) : (
+                <p className="metric-value">
+                  {scoresFailed ? "—" : (scores?.scores.week.points ?? 0)}
+                  <span className="ml-1 text-sm text-slate-500">pts</span>
                 </p>
-                <p className="mt-3 text-3xl font-black tabular-nums text-white">
-                  {score.points}
-                  <span className="ml-1 text-sm font-semibold text-slate-500">pts</span>
-                </p>
-              </div>
-            ))}
-          </section>
-
-          <div className="mt-6 grid items-start gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <section className="social-card">
-              <div className="social-card-header">
-                <div>
-                  <h2 className="text-lg font-black text-white">LeetRank details</h2>
-                  <p className="mt-1 text-xs text-slate-500">Your onboarding preferences</p>
-                </div>
-              </div>
-              <dl className="divide-y divide-white/6 px-5">
-                <div className="profile-detail-row">
-                  <dt>LeetCode</dt>
-                  <dd>@{profile.leetcode_username}</dd>
-                </div>
-                <div className="profile-detail-row">
-                  <dt>Primary goal</dt>
-                  <dd>{readableLabel(profile.primary_goal)}</dd>
-                </div>
-                <div className="profile-detail-row">
-                  <dt>Experience</dt>
-                  <dd>{readableLabel(profile.leetcode_experience)}</dd>
-                </div>
-                <div className="profile-detail-row">
-                  <dt>Weekly goal</dt>
-                  <dd>{profile.weekly_problem_goal} problems</dd>
-                </div>
-                <div className="profile-detail-row">
-                  <dt>Friends</dt>
-                  <dd>{friends?.friends.length ?? 0} / 20</dd>
-                </div>
-                <div className="profile-detail-row">
-                  <dt>Scoring since</dt>
-                  <dd>{formatDate(profile.scoring_started_at)}</dd>
-                </div>
-                <div className="profile-detail-row">
-                  <dt>LeetCode sync</dt>
-                  <dd>
-                    {profile.sync_status === "RUNNING"
-                      ? "Updating now"
-                      : profile.sync_status === "FAILED"
-                        ? "Retry scheduled"
-                        : profile.last_successful_sync_at
-                          ? formatTimestamp(profile.last_successful_sync_at)
-                          : "Pending"}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="social-card">
-              <div className="social-card-header">
-                <div>
-                  <h2 className="text-lg font-black text-white">Recent activity</h2>
-                  <p className="mt-1 text-xs text-slate-500">Your latest scored solves</p>
-                </div>
-              </div>
-              <div className="divide-y divide-white/6 px-5">
-                {activity?.items.length ? (
-                  activity.items.map((item) => (
-                    <div className="flex items-center gap-4 py-4" key={item.id}>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate font-bold text-white">{item.problem.title}</p>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${difficultyStyles[item.problem.difficulty]}`}
-                          >
-                            {readableLabel(item.problem.difficulty)}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {readableLabel(item.reason)} · {formatTimestamp(item.earned_at)}
-                        </p>
-                      </div>
-                      <p className="shrink-0 font-black tabular-nums text-orange-300">
-                        +{item.points} pts
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-10 text-center text-sm text-slate-500">
-                    No scored activity yet. Sync after your next accepted solve.
-                  </div>
-                )}
-              </div>
-            </section>
+              )}
+            </div>
+            <span className="icon-chip icon-chip-orange">
+              <Zap aria-hidden="true" size={18} />
+            </span>
           </div>
-        </>
-      )}
+          <div className="mt-4 border-t border-white/6 pt-4">
+            {activityLoading ? (
+              <div className="h-10 animate-pulse rounded-lg bg-white/4" />
+            ) : activityFailed ? (
+              <p className="text-xs text-slate-500">Weekly progress unavailable</p>
+            ) : (
+              <WeeklyGoalProgress
+                compact
+                completed={weeklyCompleted}
+                goal={profile.weekly_problem_goal}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="metric-card min-h-36">
+          <CalendarDays aria-hidden="true" className="absolute right-4 top-4 text-slate-600" size={25} />
+          <p className="metric-label">Past month</p>
+          {scoresLoading ? (
+            <div className="mt-3 h-9 w-20 animate-pulse rounded-lg bg-white/5" />
+          ) : activityFailed ? (
+            <div className="empty-compact">Recent activity is temporarily unavailable.</div>
+          ) : (
+            <p className="metric-value">
+              {scoresFailed ? "—" : (scores?.scores.month.points ?? 0)}
+              <span className="ml-1 text-sm text-slate-500">pts</span>
+            </p>
+          )}
+          <p className="mt-3 text-xs text-slate-500">Rolling 30-day score</p>
+        </div>
+
+        <div className="metric-card min-h-36">
+          <Award aria-hidden="true" className="absolute right-4 top-4 text-orange-400/25" size={26} />
+          <p className="metric-label">All time</p>
+          {scoresLoading ? (
+            <div className="mt-3 h-9 w-20 animate-pulse rounded-lg bg-white/5" />
+          ) : (
+            <p className="metric-value">
+              {scoresFailed ? "—" : (scores?.scores.all_time.points ?? 0)}
+              <span className="ml-1 text-sm text-slate-500">pts</span>
+            </p>
+          )}
+          <p className="mt-3 text-xs text-slate-500">Since joining LeetRank</p>
+        </div>
+      </section>
+
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+        <section className="panel">
+          <div className="panel-header">
+            <div className="flex items-center gap-3">
+              <span className="icon-chip">
+                <Code2 aria-hidden="true" size={18} />
+              </span>
+              <div>
+                <h2 className="section-heading">Profile details</h2>
+                <p className="section-kicker">Your goals and connected account</p>
+              </div>
+            </div>
+          </div>
+          <dl className="grid gap-2.5 p-4 sm:grid-cols-2">
+            <ProfileDetail label="LeetCode" value={`@${profile.leetcode_username}`} />
+            <ProfileDetail label="Weekly goal" value={`${profile.weekly_problem_goal} problems`} />
+            <ProfileDetail label="Primary goal" value={readableLabel(profile.primary_goal)} />
+            <ProfileDetail label="Experience" value={readableLabel(profile.leetcode_experience)} />
+            <ProfileDetail
+              label="Friends"
+              value={
+                friendsLoading
+                  ? "Loading…"
+                  : friendsFailed
+                    ? "Unavailable"
+                    : `${friends?.friends.length ?? 0} / 20`
+              }
+            />
+            <ProfileDetail label="Scoring since" value={formatDate(profile.scoring_started_at)} />
+          </dl>
+          <div className="flex items-center justify-between gap-4 border-t border-white/6 px-5 py-3.5">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <Target aria-hidden="true" size={14} />
+              <span>Account actions</span>
+            </div>
+            <button className="text-button inline-flex items-center gap-2" type="button" onClick={() => void onSignOut()}>
+              <LogOut aria-hidden="true" size={15} />
+              Sign out
+            </button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2 className="section-heading">Recent activity</h2>
+              <p className="section-kicker">Your latest scored submissions</p>
+            </div>
+            <Zap aria-hidden="true" className="text-orange-400/60" size={18} />
+          </div>
+          {activityLoading ? (
+            <div className="space-y-3 p-4">
+              {[0, 1, 2, 3].map((item) => (
+                <div className="h-12 animate-pulse rounded-lg bg-white/4" key={item} />
+              ))}
+            </div>
+          ) : (
+            <ActivityFeed
+              emptyMessage="Your accepted solves will appear here after automatic sync."
+              items={activity?.items ?? []}
+              limit={8}
+            />
+          )}
+        </section>
+      </div>
     </main>
   );
 }

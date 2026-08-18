@@ -22,3 +22,24 @@ export function initials(name: string) {
     .map((part) => part[0]?.toUpperCase())
     .join("");
 }
+
+export function readableLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function countRecentActivity(
+  earnedAtValues: string[],
+  days: number,
+  asOf: string = new Date().toISOString(),
+) {
+  const end = new Date(asOf).getTime();
+  const start = end - days * 24 * 60 * 60 * 1000;
+  return earnedAtValues.filter((value) => {
+    const timestamp = new Date(value).getTime();
+    return timestamp >= start && timestamp <= end;
+  }).length;
+}

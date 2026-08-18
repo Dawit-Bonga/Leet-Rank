@@ -135,7 +135,6 @@ export default function App() {
           <AppShell
             profile={account.profile}
             pendingRequests={pendingRequests}
-            onSignOut={signOut}
           />
         }
       >

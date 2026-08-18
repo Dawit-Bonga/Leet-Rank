@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -35,8 +36,13 @@ export function ConfirmDialog({
       className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 px-5 backdrop-blur-sm"
       role="dialog"
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/50">
-        <h2 className="text-xl font-black text-white">{title}</h2>
+      <div className="panel w-full max-w-md p-6 shadow-2xl shadow-black/50">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl border border-red-400/15 bg-red-400/8 text-red-300">
+            <AlertTriangle aria-hidden="true" size={19} />
+          </span>
+          <h2 className="text-xl font-black text-white">{title}</h2>
+        </div>
         <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
         <div className="mt-7 flex justify-end gap-3">
           <button className="text-button" type="button" onClick={onCancel} disabled={loading}>
