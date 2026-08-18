@@ -10,6 +10,7 @@ import { FriendProfilePage } from "./components/FriendProfilePage";
 import { LeaderboardDashboard } from "./components/LeaderboardDashboard";
 import { OnboardingForm } from "./components/OnboardingForm";
 import { ProfilePage } from "./components/ProfilePage";
+import { ResetPasswordForm } from "./components/ResetPasswordForm";
 import { SettingsPage } from "./components/SettingsPage";
 import { ApiError, getCurrentUser, getFriendRequests } from "./lib/api";
 import { supabase } from "./lib/supabase";
@@ -33,12 +34,22 @@ export default function App() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [passwordRecoveryActive, setPasswordRecoveryActive] = useState(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    return hash.get("type") === "recovery";
+  });
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const passwordRecoveryPath = window.location.pathname === "/reset-password";
+  const recoveryParameters = new URLSearchParams(window.location.hash.slice(1));
+  const recoveryError =
+    recoveryParameters.get("error_description")?.replaceAll("+", " ") ?? null;
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") setPasswordRecoveryActive(true);
       setSession(nextSession);
       if (!nextSession) {
         setAccount(null);
@@ -71,11 +82,11 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if (session) void loadAccount();
-  }, [session, loadAccount]);
+    if (session && !passwordRecoveryPath) void loadAccount();
+  }, [session, loadAccount, passwordRecoveryPath]);
 
   useEffect(() => {
-    if (!session || !account?.onboarding_completed) return;
+    if (!session || !account?.onboarding_completed || passwordRecoveryPath) return;
     let active = true;
     void getFriendRequests(session.access_token)
       .then((requests) => {
@@ -87,17 +98,40 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [account?.onboarding_completed, session]);
+  }, [account?.onboarding_completed, passwordRecoveryPath, session]);
 
   async function signOut() {
     await supabase.auth.signOut();
   }
 
-  if (session === undefined || (session && accountLoading && !account)) {
+  async function finishPasswordRecovery() {
+    setAuthNotice("Password updated. Sign in with your new password.");
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      setAuthNotice(null);
+      throw error;
+    }
+    window.history.replaceState({}, "", "/");
+    setPasswordRecoveryActive(false);
+  }
+
+  if (session === undefined) {
+    return <FullPageLoading />;
+  }
+  if (passwordRecoveryPath) {
+    return (
+      <ResetPasswordForm
+        recoveryReady={Boolean(session && passwordRecoveryActive && !recoveryError)}
+        recoveryError={recoveryError}
+        onComplete={finishPasswordRecovery}
+      />
+    );
+  }
+  if (session && accountLoading && !account) {
     return <FullPageLoading />;
   }
   if (!session) {
-    return <AuthForm />;
+    return <AuthForm initialNotice={authNotice} />;
   }
   if (accountError && !account) {
     return (

@@ -64,6 +64,9 @@
 
 - Supabase Auth owns signup, login, email confirmation, sessions, and access
   tokens. LeetRank does not store passwords.
+- Password recovery stays entirely within Supabase Auth. Reset links return to
+  the public frontend `/reset-password` route, and the recovery session is
+  signed out after the password is changed.
 - FastAPI validates each bearer token with the Supabase Auth user endpoint
   before trusting its user ID.
 - The verified Supabase user ID maps to the unique `users.auth_user_id` column.

@@ -1,17 +1,26 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { ArrowLeft, KeyRound } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
 import { Brand } from "./Brand";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot";
 
-export function AuthForm() {
+interface AuthFormProps {
+  initialNotice?: string | null;
+}
+
+export function AuthForm({ initialNotice = null }: AuthFormProps) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(initialNotice);
+
+  useEffect(() => {
+    if (initialNotice) setNotice(initialNotice);
+  }, [initialNotice]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,7 +28,18 @@ export function AuthForm() {
     setError(null);
     setNotice(null);
 
-    if (mode === "login") {
+    if (mode === "forgot") {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setNotice(
+          "If an account exists for that email, a password reset link is on its way.",
+        );
+      }
+    } else if (mode === "login") {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -77,15 +97,25 @@ export function AuthForm() {
             <Brand />
           </div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-400">
-            {mode === "login" ? "Welcome back" : "Start your run"}
+            {mode === "login"
+              ? "Welcome back"
+              : mode === "signup"
+                ? "Start your run"
+                : "Account recovery"}
           </p>
           <h2 className="mt-3 text-4xl font-black tracking-tight text-white">
-            {mode === "login" ? "Sign in to LeetRank" : "Create your account"}
+            {mode === "login"
+              ? "Sign in to LeetRank"
+              : mode === "signup"
+                ? "Create your account"
+                : "Reset your password"}
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-400">
             {mode === "login"
               ? "See where you stand and keep your momentum going."
-              : "You’ll connect your LeetCode profile in the next step."}
+              : mode === "signup"
+                ? "You’ll connect your LeetCode profile in the next step."
+                : "Enter your email and we’ll send you a secure recovery link."}
           </p>
 
           <form className="mt-9 space-y-5" onSubmit={handleSubmit}>
@@ -101,38 +131,69 @@ export function AuthForm() {
                 required
               />
             </label>
-            <label className="block">
-              <span className="field-label">Password</span>
-              <input
-                className="field-input"
-                type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={6}
-                placeholder="At least 6 characters"
-                required
-              />
-            </label>
+            {mode !== "forgot" && (
+              <label className="block">
+                <span className="field-label">Password</span>
+                <input
+                  className="field-input"
+                  type="password"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={6}
+                  placeholder="At least 6 characters"
+                  required
+                />
+                {mode === "login" && (
+                  <button
+                    className="mt-2 block text-xs font-bold text-orange-400 transition hover:text-orange-300"
+                    type="button"
+                    onClick={() => changeMode("forgot")}
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </label>
+            )}
 
             {error && <div className="error-banner">{error}</div>}
             {notice && <div className="success-banner">{notice}</div>}
 
             <button className="primary-button w-full" type="submit" disabled={loading}>
-              {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+              {loading ? (
+                "Please wait…"
+              ) : mode === "login" ? (
+                "Sign in"
+              ) : mode === "signup" ? (
+                "Create account"
+              ) : (
+                <>
+                  <KeyRound aria-hidden="true" size={16} /> Send reset link
+                </>
+              )}
             </button>
           </form>
 
-          <p className="mt-7 text-center text-sm text-slate-400">
-            {mode === "login" ? "New to LeetRank?" : "Already have an account?"}{" "}
+          {mode === "forgot" ? (
             <button
-              className="font-semibold text-orange-400 transition hover:text-orange-300"
+              className="mx-auto mt-7 flex items-center gap-2 text-sm font-bold text-slate-400 transition hover:text-white"
               type="button"
-              onClick={() => changeMode(mode === "login" ? "signup" : "login")}
+              onClick={() => changeMode("login")}
             >
-              {mode === "login" ? "Create an account" : "Sign in"}
+              <ArrowLeft aria-hidden="true" size={15} /> Back to sign in
             </button>
-          </p>
+          ) : (
+            <p className="mt-7 text-center text-sm text-slate-400">
+              {mode === "login" ? "New to LeetRank?" : "Already have an account?"}{" "}
+              <button
+                className="font-semibold text-orange-400 transition hover:text-orange-300"
+                type="button"
+                onClick={() => changeMode(mode === "login" ? "signup" : "login")}
+              >
+                {mode === "login" ? "Create an account" : "Sign in"}
+              </button>
+            </p>
+          )}
         </div>
       </section>
     </main>

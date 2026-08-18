@@ -47,6 +47,26 @@ The frontend requires `frontend/.env.local`. Copy `frontend/.env.example` and
 set the Supabase project URL and publishable key. Never place a Supabase secret
 key or database password in a `VITE_` environment variable.
 
+## Supabase Auth URLs
+
+In Supabase, open **Authentication → URL Configuration**. For local
+development, add this exact Redirect URL:
+
+```text
+http://localhost:5173/reset-password
+```
+
+Set the production Site URL to the deployed frontend origin and add the
+equivalent production reset URL, for example:
+
+```text
+https://app.example.com/reset-password
+```
+
+Password recovery emails redirect to this public frontend route. Production
+deployments must also serve the Vite application for direct requests to
+`/reset-password`.
+
 ## Verification
 
 ```bash
