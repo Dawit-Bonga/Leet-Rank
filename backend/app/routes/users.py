@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -18,7 +19,6 @@ from app.schemas import (
     UserResponse,
     UserScoresResponse,
     UserSubmissionsResponse,
-    UserSyncResponse,
 )
 from app.services.leetcode import (
     LeetCodeGraphQLClient,
@@ -37,11 +37,6 @@ from app.services.onboarding import (
     create_onboarded_user,
 )
 from app.services.score_reads import ScoreUserNotFoundError, get_user_activity, get_user_scores
-from app.services.submission_sync import (
-    SyncAlreadyRunningError,
-    SyncUserNotFoundError,
-    sync_user_submissions,
-)
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -52,7 +47,13 @@ def get_leetcode_client() -> Generator[LeetCodeGraphQLClient, None, None]:
         yield client
 
 
-def _user_response(user: User, *, sync_status: str) -> UserResponse:
+def _user_response(
+    user: User,
+    *,
+    sync_status: str,
+    last_sync_attempted_at: datetime | None = None,
+    last_successful_sync_at: datetime | None = None,
+) -> UserResponse:
     return UserResponse(
         id=user.id,
         username=user.username,
@@ -64,6 +65,8 @@ def _user_response(user: User, *, sync_status: str) -> UserResponse:
         scoring_started_at=user.scoring_started_at,
         onboarding_completed_at=user.onboarding_completed_at,
         sync_status=sync_status,
+        last_sync_attempted_at=last_sync_attempted_at,
+        last_successful_sync_at=last_successful_sync_at,
     )
 
 
@@ -90,7 +93,12 @@ def get_me(
     return CurrentUserResponse(
         email=identity.email,
         onboarding_completed=True,
-        profile=_user_response(account.user, sync_status=account.sync_status or "IDLE"),
+        profile=_user_response(
+            account.user,
+            sync_status=account.sync_status or "IDLE",
+            last_sync_attempted_at=account.last_sync_attempted_at,
+            last_successful_sync_at=account.last_successful_sync_at,
+        ),
     )
 
 
@@ -159,57 +167,12 @@ def create_user(
             detail={"code": "upstream_bad_response", "message": str(exc)},
         ) from exc
 
-    return _user_response(user, sync_status=sync_state.sync_status)
-
-
-@router.post(
-    "/me/sync",
-    response_model=UserSyncResponse,
-    responses={
-        404: {"model": ErrorResponse},
-        409: {"model": ErrorResponse},
-        502: {"model": ErrorResponse},
-        503: {"model": ErrorResponse},
-    },
-)
-def sync_user(
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_db),
-    leetcode_client: LeetCodeGraphQLClient = Depends(get_leetcode_client),
-) -> UserSyncResponse:
-    try:
-        result = sync_user_submissions(
-            session,
-            leetcode_client,
-            user_id=current_user.id,
-        )
-    except SyncUserNotFoundError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": "user_not_found", "message": str(exc)},
-        ) from exc
-    except SyncAlreadyRunningError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail={"code": "sync_already_running", "message": str(exc)},
-        ) from exc
-    except UpstreamRateLimitedError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail={"code": "upstream_rate_limited", "message": str(exc)},
-        ) from exc
-    except UpstreamUnavailableError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail={"code": "upstream_unavailable", "message": str(exc)},
-        ) from exc
-    except UpstreamBadResponseError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail={"code": "upstream_bad_response", "message": str(exc)},
-        ) from exc
-
-    return UserSyncResponse(**result.__dict__)
+    return _user_response(
+        user,
+        sync_status=sync_state.sync_status,
+        last_sync_attempted_at=sync_state.last_attempted_at,
+        last_successful_sync_at=sync_state.last_successful_at,
+    )
 
 
 @router.get(

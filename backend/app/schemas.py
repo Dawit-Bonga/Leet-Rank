@@ -64,21 +64,14 @@ class UserResponse(BaseModel):
     scoring_started_at: datetime
     onboarding_completed_at: datetime
     sync_status: str
+    last_sync_attempted_at: datetime | None
+    last_successful_sync_at: datetime | None
 
 
 class CurrentUserResponse(BaseModel):
     email: str | None
     onboarding_completed: bool
     profile: UserResponse | None
-
-
-class UserSyncResponse(BaseModel):
-    status: str
-    fetched: int
-    new_submissions: int
-    duplicate_submissions: int
-    ignored_before_signup: int
-    points_awarded: int
 
 
 class PeriodScore(BaseModel):

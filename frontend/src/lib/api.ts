@@ -9,7 +9,6 @@ import type {
   OnboardingPayload,
   PublicUserSummary,
   ScoresResponse,
-  SyncResponse,
   UserProfile,
 } from "../types/api";
 
@@ -79,10 +78,6 @@ export function getLeaderboard(
   period: LeaderboardPeriod,
 ): Promise<LeaderboardResponse> {
   return request(`/users/me/leaderboard?period=${period}`, accessToken);
-}
-
-export function syncLeetCode(accessToken: string): Promise<SyncResponse> {
-  return request("/users/me/sync", accessToken, { method: "POST" });
 }
 
 export function getFriendRequests(accessToken: string): Promise<FriendRequestsResponse> {

@@ -78,7 +78,10 @@ def sync_due_users(
                     ),
                 )
             )
-            .order_by(UserSyncState.last_attempted_at.asc(), User.id.asc())
+            .order_by(
+                UserSyncState.last_attempted_at.asc().nulls_first(),
+                User.id.asc(),
+            )
             .limit(batch_size)
         ).all()
     )

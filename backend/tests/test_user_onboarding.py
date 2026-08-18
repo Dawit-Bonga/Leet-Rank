@@ -101,6 +101,8 @@ def test_get_me_reports_onboarding_state_and_profile(onboarding_client):
     assert after.json()["onboarding_completed"] is True
     assert after.json()["profile"]["username"] == "alice"
     assert after.json()["profile"]["sync_status"] == "IDLE"
+    assert after.json()["profile"]["last_sync_attempted_at"] is None
+    assert after.json()["profile"]["last_successful_sync_at"] is None
 
 
 def test_duplicate_leetcode_username_is_rejected_without_second_provider_call(onboarding_client):
@@ -208,14 +210,12 @@ def test_invalid_onboarding_choices_are_rejected(onboarding_client, field, value
     assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
-def test_authenticated_user_without_profile_must_complete_onboarding(onboarding_client):
-    client, _, provider = onboarding_client
-    provider.auth_user_id = uuid4()
+def test_users_cannot_trigger_synchronization_through_the_public_api(onboarding_client):
+    client, _, _ = onboarding_client
 
     response = client.post("/users/me/sync")
 
-    assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "onboarding_required"
+    assert response.status_code == 404
 
 
 def test_new_user_has_zero_score_snapshot_and_empty_activity(onboarding_client):

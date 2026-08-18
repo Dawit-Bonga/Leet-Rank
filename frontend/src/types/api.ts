@@ -19,6 +19,8 @@ export interface UserProfile {
   scoring_started_at: string;
   onboarding_completed_at: string;
   sync_status: string;
+  last_sync_attempted_at: string | null;
+  last_successful_sync_at: string | null;
 }
 
 export interface CurrentUser {
@@ -52,15 +54,6 @@ export interface LeaderboardResponse {
   as_of: string;
   starts_at: string | null;
   entries: LeaderboardEntry[];
-}
-
-export interface SyncResponse {
-  status: string;
-  fetched: number;
-  new_submissions: number;
-  duplicate_submissions: number;
-  ignored_before_signup: number;
-  points_awarded: number;
 }
 
 export interface PublicUserSummary {

@@ -151,6 +151,18 @@ export function ProfilePage({ accessToken, profile, onSignOut }: ProfilePageProp
                   <dt>Scoring since</dt>
                   <dd>{formatDate(profile.scoring_started_at)}</dd>
                 </div>
+                <div className="profile-detail-row">
+                  <dt>LeetCode sync</dt>
+                  <dd>
+                    {profile.sync_status === "RUNNING"
+                      ? "Updating now"
+                      : profile.sync_status === "FAILED"
+                        ? "Retry scheduled"
+                        : profile.last_successful_sync_at
+                          ? formatTimestamp(profile.last_successful_sync_at)
+                          : "Pending"}
+                  </dd>
+                </div>
               </dl>
             </section>
 

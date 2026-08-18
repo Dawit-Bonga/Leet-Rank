@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { ApiError, getLeaderboard, syncLeetCode } from "../lib/api";
+import { ApiError, getLeaderboard } from "../lib/api";
 import { formatTimestamp, initials } from "../lib/format";
 import type {
   LeaderboardPeriod,
   LeaderboardResponse,
-  SyncResponse,
   UserProfile,
 } from "../types/api";
 interface LeaderboardDashboardProps {
@@ -26,9 +25,7 @@ export function LeaderboardDashboard({
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const loadLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -50,26 +47,6 @@ export function LeaderboardDashboard({
     void loadLeaderboard();
   }, [loadLeaderboard]);
 
-  async function handleSync() {
-    setSyncing(true);
-    setError(null);
-    setSyncMessage(null);
-    try {
-      const result: SyncResponse = await syncLeetCode(accessToken);
-      const solveLabel = result.new_submissions === 1 ? "solve" : "solves";
-      setSyncMessage(
-        result.new_submissions > 0
-          ? `${result.new_submissions} new ${solveLabel} found · ${result.points_awarded} points added`
-          : "You’re already up to date.",
-      );
-      await loadLeaderboard();
-    } catch (caughtError) {
-      setError(caughtError instanceof ApiError ? caughtError.message : "Sync failed. Try again.");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   return (
     <main className="mx-auto max-w-6xl px-5 pb-28 pt-10 sm:px-8 sm:py-14">
         <section className="flex flex-col justify-between gap-7 md:flex-row md:items-end">
@@ -83,18 +60,20 @@ export function LeaderboardDashboard({
               includes you and all accepted friends.
             </p>
           </div>
-          <button
-            className="secondary-button shrink-0"
-            type="button"
-            onClick={() => void handleSync()}
-            disabled={syncing}
-          >
-            <span className={syncing ? "inline-block animate-spin" : ""}>↻</span>
-            {syncing ? "Syncing…" : "Sync LeetCode"}
-          </button>
+          <div className="shrink-0 rounded-xl border border-white/8 bg-white/3 px-4 py-3 text-sm">
+            <p className="font-bold text-slate-200">Automatic LeetCode sync</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {profile.sync_status === "RUNNING"
+                ? "Updating now…"
+                : profile.sync_status === "FAILED"
+                  ? "Retry scheduled automatically"
+                  : profile.last_successful_sync_at
+                    ? `Last synced ${formatTimestamp(profile.last_successful_sync_at)}`
+                    : "First sync pending"}
+            </p>
+          </div>
         </section>
 
-        {syncMessage && <div className="success-banner mt-7">{syncMessage}</div>}
         {error && <div className="error-banner mt-7">{error}</div>}
 
         <section className="mt-9 overflow-hidden rounded-3xl border border-white/8 bg-slate-900/70 shadow-2xl shadow-black/20">
@@ -113,7 +92,7 @@ export function LeaderboardDashboard({
             </div>
             {leaderboard && (
               <p className="text-xs text-slate-500">
-                Updated {formatTimestamp(leaderboard.as_of)}
+                Calculated {formatTimestamp(leaderboard.as_of)}
               </p>
             )}
           </div>

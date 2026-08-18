@@ -51,8 +51,14 @@
 - No Redis, task queue, or precomputed leaderboard is needed for V1.
 - Direct LeetCode GraphQL responses are normalized behind the LeetCode service
   so upstream query changes do not affect scoring code.
-- Public synchronization requests at most the latest 20 accepted submissions
-  and uses their real LeetCode submission IDs for deduplication.
+- Synchronization is backend-controlled; users cannot manually trigger it.
+- A scheduled command processes accounts due for synchronization in batches.
+  New accounts are immediately due, then each account becomes due 15 minutes
+  after its last attempt.
+- Each synchronization requests at most the latest 20 accepted submissions and
+  uses their real LeetCode submission IDs for deduplication.
+- One user's failure does not stop the remaining batch. A `RUNNING` state older
+  than 30 minutes is treated as abandoned and recovered by the next job.
 
 ## V1 authentication
 
