@@ -38,6 +38,15 @@ export interface OnboardingPayload {
   weekly_problem_goal: number;
 }
 
+export interface UserSettingsPayload {
+  display_name: string;
+  primary_goal: PrimaryGoal;
+  leetcode_experience: LeetCodeExperience;
+  weekly_problem_goal: number;
+}
+
+export type UserSettingsResponse = UserSettingsPayload;
+
 export interface LeaderboardEntry {
   rank: number;
   user: {

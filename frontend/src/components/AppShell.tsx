@@ -1,5 +1,6 @@
-import { LayoutDashboard, UserRound, UsersRound, type LucideIcon } from "lucide-react";
-import { NavLink, Outlet } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, LayoutDashboard, LogOut, Settings, UserRound, UsersRound, type LucideIcon } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 
 import type { UserProfile } from "../types/api";
 import { Brand } from "./Brand";
@@ -8,6 +9,7 @@ import { UserAvatar } from "./UserAvatar";
 interface AppShellProps {
   profile: UserProfile;
   pendingRequests: number;
+  onSignOut: () => Promise<void>;
 }
 
 const navigation: Array<{
@@ -21,7 +23,36 @@ const navigation: Array<{
   { to: "/profile", label: "Profile", icon: UserRound, end: false },
 ];
 
-export function AppShell({ profile, pendingRequests }: AppShellProps) {
+export function AppShell({ profile, pendingRequests, onSignOut }: AppShellProps) {
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    setAccountMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountMenuOpen]);
+
   return (
     <div className="app-background min-h-screen text-white">
       <header className="sticky top-0 z-30 border-b border-white/6 bg-[#030712]/86 px-5 py-3.5 backdrop-blur-xl sm:px-8">
@@ -48,12 +79,13 @@ export function AppShell({ profile, pendingRequests }: AppShellProps) {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
-            <NavLink
-              className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-white/5 focus:outline-none focus:ring-4 focus:ring-white/5 ${isActive ? "bg-white/5" : ""}`
-              }
-              to="/profile"
+          <div className="relative" ref={accountMenuRef}>
+            <button
+              aria-expanded={accountMenuOpen}
+              aria-haspopup="menu"
+              className={`group flex items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-white/5 focus:outline-none focus:ring-4 focus:ring-white/5 ${accountMenuOpen ? "bg-white/5" : ""}`}
+              type="button"
+              onClick={() => setAccountMenuOpen((open) => !open)}
             >
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-semibold text-white group-hover:text-orange-300">
@@ -62,7 +94,42 @@ export function AppShell({ profile, pendingRequests }: AppShellProps) {
                 <p className="text-xs text-slate-500">@{profile.username}</p>
               </div>
               <UserAvatar highlighted name={profile.display_name} size="sm" />
-            </NavLink>
+              <ChevronDown
+                aria-hidden="true"
+                className={`hidden text-slate-600 transition sm:block ${accountMenuOpen ? "rotate-180" : ""}`}
+                size={15}
+              />
+            </button>
+
+            {accountMenuOpen && (
+              <div
+                className="absolute right-0 top-[calc(100%+0.65rem)] z-40 w-56 overflow-hidden rounded-xl border border-white/10 bg-slate-900/98 p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl"
+                role="menu"
+              >
+                <div className="border-b border-white/6 px-3 py-2.5 sm:hidden">
+                  <p className="truncate text-sm font-bold text-white">{profile.display_name}</p>
+                  <p className="truncate text-xs text-slate-500">@{profile.username}</p>
+                </div>
+                <Link className="account-menu-item" role="menuitem" to="/profile">
+                  <UserRound aria-hidden="true" size={16} />
+                  View profile
+                </Link>
+                <Link className="account-menu-item" role="menuitem" to="/settings">
+                  <Settings aria-hidden="true" size={16} />
+                  Settings
+                </Link>
+                <div className="my-1 border-t border-white/6" />
+                <button
+                  className="account-menu-item w-full text-red-300 hover:bg-red-400/8 hover:text-red-200"
+                  role="menuitem"
+                  type="button"
+                  onClick={() => void onSignOut()}
+                >
+                  <LogOut aria-hidden="true" size={16} />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

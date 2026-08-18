@@ -105,6 +105,52 @@ def test_get_me_reports_onboarding_state_and_profile(onboarding_client):
     assert after.json()["profile"]["last_successful_sync_at"] is None
 
 
+def test_authenticated_user_can_update_profile_settings(onboarding_client):
+    client, _, _ = onboarding_client
+    client.post("/users/me/onboarding", json=onboarding_payload())
+
+    response = client.patch(
+        "/users/me/settings",
+        json={
+            "display_name": "  Alice Updated  ",
+            "primary_goal": "COMPETITION",
+            "leetcode_experience": "ADVANCED",
+            "weekly_problem_goal": 9,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "display_name": "Alice Updated",
+        "primary_goal": "COMPETITION",
+        "leetcode_experience": "ADVANCED",
+        "weekly_problem_goal": 9,
+    }
+    profile = client.get("/users/me").json()["profile"]
+    assert profile["display_name"] == "Alice Updated"
+    assert profile["weekly_problem_goal"] == 9
+    assert profile["username"] == "alice"
+    assert profile["leetcode_username"] == "alicelc"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"display_name": "   "},
+        {"weekly_problem_goal": 0},
+        {"primary_goal": "FAME"},
+    ],
+)
+def test_invalid_profile_settings_are_rejected(onboarding_client, payload):
+    client, _, _ = onboarding_client
+    client.post("/users/me/onboarding", json=onboarding_payload())
+
+    response = client.patch("/users/me/settings", json=payload)
+
+    assert response.status_code == 422
+
+
 def test_duplicate_leetcode_username_is_rejected_without_second_provider_call(onboarding_client):
     client, session, provider = onboarding_client
     assert client.post("/users/me/onboarding", json=onboarding_payload()).status_code == 201

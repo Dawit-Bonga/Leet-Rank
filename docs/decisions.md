@@ -107,6 +107,15 @@
   broader friends list are not exposed.
 - Removing a friendship immediately removes profile access in both directions.
 
+## V1 profile settings
+
+- Users can update their display name, primary goal, experience level, and
+  weekly problem goal.
+- LeetRank usernames remain stable because friends use them for discovery.
+- Connected LeetCode usernames remain stable because they define scoring
+  identity and history. Reconnection requires a separate future workflow.
+- Email and password changes remain owned by Supabase Auth.
+
 # Product Rules
 Scoring begins when a LeetCode username is successfully connected.
 Previous LeetCode activity is ignored.

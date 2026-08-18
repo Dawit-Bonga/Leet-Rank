@@ -27,3 +27,8 @@ app.add_middleware(
 )
 app.include_router(users_router)
 app.include_router(friends_router)
+
+
+@app.get("/health", tags=["health"])
+def get_health() -> dict[str, str]:
+    return {"status": "ok"}

@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Submission(BaseModel):
@@ -72,6 +72,44 @@ class CurrentUserResponse(BaseModel):
     email: str | None
     onboarding_completed: bool
     profile: UserResponse | None
+
+
+class UserSettingsUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=100)
+    primary_goal: PrimaryGoal | None = None
+    leetcode_experience: LeetCodeExperience | None = None
+    weekly_problem_goal: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("display_name")
+    @classmethod
+    def normalize_display_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Display name cannot be empty.")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_change(self) -> "UserSettingsUpdate":
+        if all(
+            value is None
+            for value in (
+                self.display_name,
+                self.primary_goal,
+                self.leetcode_experience,
+                self.weekly_problem_goal,
+            )
+        ):
+            raise ValueError("At least one setting must be provided.")
+        return self
+
+
+class UserSettingsResponse(BaseModel):
+    display_name: str
+    primary_goal: PrimaryGoal
+    leetcode_experience: LeetCodeExperience
+    weekly_problem_goal: int
 
 
 class PeriodScore(BaseModel):

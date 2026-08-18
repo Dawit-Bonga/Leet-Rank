@@ -25,6 +25,9 @@ npm run dev
 
 Then open [http://localhost:5173](http://localhost:5173).
 
+The backend exposes an unauthenticated liveness check at
+`GET http://127.0.0.1:8000/health` for local and production monitoring.
+
 Run all accounts that are due for automatic LeetCode synchronization:
 
 ```bash

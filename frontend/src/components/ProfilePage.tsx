@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Award, CalendarDays, Code2, LogOut, Target, Zap } from "lucide-react";
+import { Award, CalendarDays, Code2, Settings, Target, Zap } from "lucide-react";
+import { Link } from "react-router";
 
 import { ApiError, getActivity, getFriends, getScores } from "../lib/api";
 import { countRecentActivity, formatDate, readableLabel } from "../lib/format";
@@ -17,7 +18,6 @@ import { WeeklyGoalProgress } from "./WeeklyGoalProgress";
 interface ProfilePageProps {
   accessToken: string;
   profile: UserProfile;
-  onSignOut: () => Promise<void>;
 }
 
 function ProfileDetail({ label, value }: { label: string; value: string }) {
@@ -31,7 +31,7 @@ function ProfileDetail({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ProfilePage({ accessToken, profile, onSignOut }: ProfilePageProps) {
+export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
   const [scores, setScores] = useState<ScoresResponse | null>(null);
   const [activity, setActivity] = useState<ActivityResponse | null>(null);
   const [friends, setFriends] = useState<FriendsResponse | null>(null);
@@ -234,10 +234,10 @@ export function ProfilePage({ accessToken, profile, onSignOut }: ProfilePageProp
               <Target aria-hidden="true" size={14} />
               <span>Account actions</span>
             </div>
-            <button className="text-button inline-flex items-center gap-2" type="button" onClick={() => void onSignOut()}>
-              <LogOut aria-hidden="true" size={15} />
-              Sign out
-            </button>
+            <Link className="text-button inline-flex items-center gap-2" to="/settings">
+              <Settings aria-hidden="true" size={15} />
+              Edit settings
+            </Link>
           </div>
         </section>
 

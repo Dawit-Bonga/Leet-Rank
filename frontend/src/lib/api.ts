@@ -11,6 +11,8 @@ import type {
   PublicUserSummary,
   ScoresResponse,
   UserProfile,
+  UserSettingsPayload,
+  UserSettingsResponse,
 } from "../types/api";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(
@@ -70,6 +72,16 @@ export function completeOnboarding(
 ): Promise<UserProfile> {
   return request("/users/me/onboarding", accessToken, {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateSettings(
+  accessToken: string,
+  payload: UserSettingsPayload,
+): Promise<UserSettingsResponse> {
+  return request("/users/me/settings", accessToken, {
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
 }

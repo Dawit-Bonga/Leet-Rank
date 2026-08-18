@@ -10,6 +10,7 @@ import { FriendProfilePage } from "./components/FriendProfilePage";
 import { LeaderboardDashboard } from "./components/LeaderboardDashboard";
 import { OnboardingForm } from "./components/OnboardingForm";
 import { ProfilePage } from "./components/ProfilePage";
+import { SettingsPage } from "./components/SettingsPage";
 import { ApiError, getCurrentUser, getFriendRequests } from "./lib/api";
 import { supabase } from "./lib/supabase";
 import type { CurrentUser } from "./types/api";
@@ -134,6 +135,7 @@ export default function App() {
       <Route
         element={
           <AppShell
+            onSignOut={signOut}
             profile={account.profile}
             pendingRequests={pendingRequests}
           />
@@ -164,7 +166,16 @@ export default function App() {
             <ProfilePage
               accessToken={session.access_token}
               profile={account.profile}
-              onSignOut={signOut}
+            />
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <SettingsPage
+              accessToken={session.access_token}
+              profile={account.profile}
+              onSaved={loadAccount}
             />
           }
         />

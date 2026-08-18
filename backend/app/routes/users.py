@@ -17,6 +17,8 @@ from app.schemas import (
     UserActivityResponse,
     UserOnboardingRequest,
     UserResponse,
+    UserSettingsResponse,
+    UserSettingsUpdate,
     UserScoresResponse,
     UserSubmissionsResponse,
 )
@@ -37,6 +39,11 @@ from app.services.onboarding import (
     create_onboarded_user,
 )
 from app.services.score_reads import ScoreUserNotFoundError, get_user_activity, get_user_scores
+from app.services.user_settings import (
+    InvalidSettingsError,
+    SettingsUserNotFoundError,
+    update_user_settings,
+)
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -99,6 +106,46 @@ def get_me(
             last_sync_attempted_at=account.last_sync_attempted_at,
             last_successful_sync_at=account.last_successful_sync_at,
         ),
+    )
+
+
+@router.patch(
+    "/me/settings",
+    response_model=UserSettingsResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+)
+def update_settings(
+    request: UserSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> UserSettingsResponse:
+    try:
+        user = update_user_settings(
+            session,
+            user_id=current_user.id,
+            display_name=request.display_name,
+            primary_goal=request.primary_goal.value if request.primary_goal else None,
+            leetcode_experience=(
+                request.leetcode_experience.value if request.leetcode_experience else None
+            ),
+            weekly_problem_goal=request.weekly_problem_goal,
+        )
+    except SettingsUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "user_not_found", "message": str(exc)},
+        ) from exc
+    except InvalidSettingsError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_settings", "message": str(exc)},
+        ) from exc
+
+    return UserSettingsResponse(
+        display_name=user.display_name,
+        primary_goal=user.primary_goal,
+        leetcode_experience=user.leetcode_experience,
+        weekly_problem_goal=user.weekly_problem_goal,
     )
 
 
