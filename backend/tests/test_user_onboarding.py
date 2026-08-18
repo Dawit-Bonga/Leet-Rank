@@ -135,3 +135,24 @@ def test_sync_endpoint_returns_not_found_for_unknown_user(onboarding_client):
 
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "user_not_found"
+
+
+def test_new_user_has_zero_score_snapshot_and_empty_activity(onboarding_client):
+    client, _, _ = onboarding_client
+    created = client.post("/users", json=onboarding_payload()).json()
+
+    scores = client.get(f"/users/{created['id']}/scores")
+    activity = client.get(f"/users/{created['id']}/activity")
+
+    assert scores.status_code == 200
+    assert scores.json()["scores"]["week"]["points"] == 0
+    assert scores.json()["scores"]["month"]["points"] == 0
+    assert scores.json()["scores"]["all_time"]["points"] == 0
+    assert scores.json()["as_of"].endswith("Z")
+    assert activity.status_code == 200
+    assert activity.json() == {
+        "items": [],
+        "limit": 20,
+        "offset": 0,
+        "has_more": False,
+    }

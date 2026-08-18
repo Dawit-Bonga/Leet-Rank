@@ -67,3 +67,41 @@ class UserSyncResponse(BaseModel):
     duplicate_submissions: int
     ignored_before_signup: int
     points_awarded: int
+
+
+class PeriodScore(BaseModel):
+    points: int
+    starts_at: datetime
+
+
+class ScorePeriods(BaseModel):
+    week: PeriodScore
+    month: PeriodScore
+    all_time: PeriodScore
+
+
+class UserScoresResponse(BaseModel):
+    user_id: UUID
+    as_of: datetime
+    scores: ScorePeriods
+
+
+class ActivityProblem(BaseModel):
+    title: str
+    slug: str
+    difficulty: str
+
+
+class ActivityItem(BaseModel):
+    id: UUID
+    problem: ActivityProblem
+    points: int
+    reason: str
+    earned_at: datetime
+
+
+class UserActivityResponse(BaseModel):
+    items: list[ActivityItem]
+    limit: int
+    offset: int
+    has_more: bool

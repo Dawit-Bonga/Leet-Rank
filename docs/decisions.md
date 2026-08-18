@@ -33,6 +33,10 @@
 - `month` is a rolling thirty-day window.
 - `all` contains every LeetRank score event since signup.
 - Leaderboards aggregate stored score events and never recalculate scores.
+- Personal score responses return all three totals with a server-generated
+  `as_of` timestamp and the start of each period.
+- Activity is read from `score_events` newest-first. Zero-point cooldown events
+  remain visible so users can understand why a submission earned no points.
 
 ## V1 infrastructure
 

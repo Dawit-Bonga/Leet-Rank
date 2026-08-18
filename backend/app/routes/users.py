@@ -1,11 +1,23 @@
 from collections.abc import Generator
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import ErrorResponse, UserOnboardingRequest, UserResponse, UserSubmissionsResponse, UserSyncResponse
+from app.schemas import (
+    ActivityItem,
+    ActivityProblem,
+    ErrorResponse,
+    PeriodScore,
+    ScorePeriods,
+    UserActivityResponse,
+    UserOnboardingRequest,
+    UserResponse,
+    UserScoresResponse,
+    UserSubmissionsResponse,
+    UserSyncResponse,
+)
 from app.services.leetcode import (
     AlfaLeetCodeClient,
     UpstreamBadResponseError,
@@ -15,6 +27,7 @@ from app.services.leetcode import (
     fetch_recent_accepted_submissions,
 )
 from app.services.onboarding import LeetCodeUsernameTakenError, create_onboarded_user
+from app.services.score_reads import ScoreUserNotFoundError, get_user_activity, get_user_scores
 from app.services.submission_sync import (
     SyncAlreadyRunningError,
     SyncUserNotFoundError,
@@ -143,6 +156,79 @@ def sync_user(
         ) from exc
 
     return UserSyncResponse(**result.__dict__)
+
+
+@router.get(
+    "/{user_id}/scores",
+    response_model=UserScoresResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def get_scores(
+    user_id: UUID,
+    session: Session = Depends(get_db),
+) -> UserScoresResponse:
+    try:
+        result = get_user_scores(session, user_id=user_id)
+    except ScoreUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "user_not_found", "message": str(exc)},
+        ) from exc
+
+    return UserScoresResponse(
+        user_id=result.user_id,
+        as_of=result.as_of,
+        scores=ScorePeriods(
+            week=PeriodScore(**result.week.__dict__),
+            month=PeriodScore(**result.month.__dict__),
+            all_time=PeriodScore(**result.all_time.__dict__),
+        ),
+    )
+
+
+@router.get(
+    "/{user_id}/activity",
+    response_model=UserActivityResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def get_activity(
+    user_id: UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_db),
+) -> UserActivityResponse:
+    try:
+        result = get_user_activity(
+            session,
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+        )
+    except ScoreUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "user_not_found", "message": str(exc)},
+        ) from exc
+
+    return UserActivityResponse(
+        items=[
+            ActivityItem(
+                id=item.id,
+                problem=ActivityProblem(
+                    title=item.problem_title,
+                    slug=item.problem_slug,
+                    difficulty=item.difficulty,
+                ),
+                points=item.points,
+                reason=item.reason,
+                earned_at=item.earned_at,
+            )
+            for item in result.items
+        ],
+        limit=result.limit,
+        offset=result.offset,
+        has_more=result.has_more,
+    )
 
 
 @router.get(
