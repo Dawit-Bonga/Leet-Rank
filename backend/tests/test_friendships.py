@@ -18,6 +18,7 @@ from app.services.friendships import (
     list_friends,
     remove_friend,
 )
+from app.services.user_search import search_users
 
 
 def make_session() -> Session:
@@ -157,3 +158,33 @@ def test_acceptance_is_rejected_when_either_user_has_twenty_friends():
 
         assert session.get(FriendRequest, request.id) is not None
         assert session.get(Friendship, (alice.id, bob.id)) is None
+
+
+def test_user_search_returns_prefix_matches_with_relationship_state():
+    with make_session() as session:
+        dawit = add_user(session, "dawit")
+        david = add_user(session, "david")
+        davina = add_user(session, "davina")
+        davy = add_user(session, "davy")
+        add_user(session, "alice")
+
+        session.add_all(
+            [
+                Friendship(user_id=dawit.id, friend_id=david.id),
+                Friendship(user_id=david.id, friend_id=dawit.id),
+                FriendRequest(requester_id=dawit.id, addressee_id=davina.id),
+                FriendRequest(requester_id=davy.id, addressee_id=dawit.id),
+            ]
+        )
+        session.commit()
+
+        results = search_users(session, user_id=dawit.id, username_prefix=" DAV ")
+
+        assert [(result.user.username, result.relationship) for result in results] == [
+            ("david", "FRIEND"),
+            ("davina", "OUTGOING"),
+            ("davy", "INCOMING"),
+        ]
+        assert results[0].friend_request_id is None
+        assert results[1].friend_request_id is not None
+        assert results[2].friend_request_id is not None

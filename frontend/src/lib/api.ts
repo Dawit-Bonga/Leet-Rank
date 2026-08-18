@@ -13,6 +13,7 @@ import type {
   UserProfile,
   UserSettingsPayload,
   UserSettingsResponse,
+  UserSearchResponse,
 } from "../types/api";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(
@@ -105,6 +106,16 @@ export function sendFriendRequest(
     method: "POST",
     body: JSON.stringify({ username }),
   });
+}
+
+export function searchUsers(
+  accessToken: string,
+  username: string,
+): Promise<UserSearchResponse> {
+  return request(
+    `/users/me/search?username=${encodeURIComponent(username)}`,
+    accessToken,
+  );
 }
 
 export function acceptFriendRequest(

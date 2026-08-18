@@ -1,5 +1,17 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Check, Inbox, Send, UserMinus, UserPlus, UsersRound, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Check,
+  Clock3,
+  Inbox,
+  LoaderCircle,
+  Search,
+  Send,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import {
@@ -9,6 +21,7 @@ import {
   getFriendRequests,
   getFriends,
   removeFriend,
+  searchUsers,
   sendFriendRequest,
 } from "../lib/api";
 import { formatTimestamp } from "../lib/format";
@@ -17,6 +30,8 @@ import type {
   FriendRequestsResponse,
   FriendsResponse,
   PublicUserSummary,
+  UserSearchItem,
+  UserSearchResponse,
 } from "../types/api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { UserAvatar } from "./UserAvatar";
@@ -55,8 +70,11 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
   const [friends, setFriends] = useState<FriendsResponse | null>(null);
   const [requests, setRequests] = useState<FriendRequestsResponse | null>(null);
   const [username, setUsername] = useState("");
+  const [searchResults, setSearchResults] = useState<UserSearchResponse | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [activeSearchUserId, setActiveSearchUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [friendToRemove, setFriendToRemove] = useState<PublicUserSummary | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -85,24 +103,101 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
     void loadFriends();
   }, [loadFriends]);
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const normalizedUsername = username.trim().replace(/^@/, "");
-    if (!normalizedUsername) return;
-    setSending(true);
+  const normalizedSearch = username.trim().replace(/^@/, "");
+
+  useEffect(() => {
+    if (normalizedSearch.length < 3) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+    if (!/^[A-Za-z0-9][A-Za-z0-9_]{2,29}$/.test(normalizedSearch)) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      setSearchError("Use only letters, numbers, and underscores.");
+      return;
+    }
+
+    let active = true;
+    setSearchLoading(true);
+    setSearchResults(null);
+    setSearchError(null);
+    const timeout = window.setTimeout(() => {
+      void searchUsers(accessToken, normalizedSearch)
+        .then((results) => {
+          if (active) setSearchResults(results);
+        })
+        .catch((caughtError) => {
+          if (!active) return;
+          setSearchError(
+            caughtError instanceof ApiError
+              ? caughtError.message
+              : "Could not search for users.",
+          );
+        })
+        .finally(() => {
+          if (active) setSearchLoading(false);
+        });
+    }, 300);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [accessToken, normalizedSearch]);
+
+  async function handleSearchAction(result: UserSearchItem) {
+    if (
+      result.relationship !== "NONE" &&
+      !(result.relationship === "INCOMING" && result.friend_request_id)
+    ) {
+      return;
+    }
+    setActiveSearchUserId(result.user.id);
     setError(null);
     setNotice(null);
     try {
-      const request = await sendFriendRequest(accessToken, normalizedUsername);
-      setUsername("");
-      setNotice(`Friend request sent to @${request.user.username}.`);
+      if (result.relationship === "INCOMING" && result.friend_request_id) {
+        await acceptFriendRequest(accessToken, result.friend_request_id);
+        setNotice(`You and @${result.user.username} are now friends.`);
+        setSearchResults((current) =>
+          current
+            ? {
+                users: current.users.map((item) =>
+                  item.user.id === result.user.id
+                    ? { ...item, relationship: "FRIEND", friend_request_id: null }
+                    : item,
+                ),
+              }
+            : current,
+        );
+      } else {
+        const request = await sendFriendRequest(accessToken, result.user.username);
+        setNotice(`Friend request sent to @${request.user.username}.`);
+        setSearchResults((current) =>
+          current
+            ? {
+                users: current.users.map((item) =>
+                  item.user.id === result.user.id
+                    ? {
+                        ...item,
+                        relationship: "OUTGOING",
+                        friend_request_id: request.id,
+                      }
+                    : item,
+                ),
+              }
+            : current,
+        );
+      }
       await loadFriends();
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError ? caughtError.message : "Could not send friend request.",
       );
     } finally {
-      setSending(false);
+      setActiveSearchUserId(null);
     }
   }
 
@@ -120,6 +215,21 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
       } else {
         await deleteFriendRequest(accessToken, request.id);
       }
+      setSearchResults((current) =>
+        current
+          ? {
+              users: current.users.map((item) =>
+                item.user.id === request.user.id
+                  ? {
+                      ...item,
+                      relationship: action === "accept" ? "FRIEND" : "NONE",
+                      friend_request_id: null,
+                    }
+                  : item,
+              ),
+            }
+          : current,
+      );
       setNotice(successMessage);
       await loadFriends();
     } catch (caughtError) {
@@ -135,6 +245,17 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
     setError(null);
     try {
       await removeFriend(accessToken, friendToRemove.id);
+      setSearchResults((current) =>
+        current
+          ? {
+              users: current.users.map((item) =>
+                item.user.id === friendToRemove.id
+                  ? { ...item, relationship: "NONE", friend_request_id: null }
+                  : item,
+              ),
+            }
+          : current,
+      );
       setNotice(`@${friendToRemove.username} was removed from your friends.`);
       setFriendToRemove(null);
       await loadFriends();
@@ -164,37 +285,107 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
         </div>
       </section>
 
-      <section className="panel panel-accent mt-6 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+      <section className="panel panel-accent mt-6">
+        <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center sm:p-5">
           <div className="flex min-w-48 items-center gap-3">
             <span className="icon-chip icon-chip-orange">
               <UserPlus aria-hidden="true" size={18} />
             </span>
             <div>
               <h2 className="text-sm font-extrabold text-white">Add a friend</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Use their exact LeetRank username</p>
+              <p className="mt-0.5 text-xs text-slate-500">Search by LeetRank username</p>
             </div>
           </div>
-          <form className="flex flex-1 flex-col gap-2.5 sm:flex-row" onSubmit={handleSend}>
-            <div className="relative flex-1">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">@</span>
-              <input
-                aria-label="LeetRank username"
-                className="field-input py-3 pl-9"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="username"
-                minLength={3}
-                maxLength={31}
-                required
+          <div className="relative flex-1">
+            <Search
+              aria-hidden="true"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600"
+              size={17}
+            />
+            <input
+              aria-label="Search LeetRank usernames"
+              className="field-input py-3 pl-11 pr-11"
+              type="search"
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value);
+                setNotice(null);
+              }}
+              placeholder="Start typing a username"
+              maxLength={31}
+            />
+            {searchLoading && (
+              <LoaderCircle
+                aria-label="Searching"
+                className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-orange-400"
+                size={17}
               />
-            </div>
-            <button className="primary-button whitespace-nowrap py-3" type="submit" disabled={sending}>
-              <UserPlus aria-hidden="true" size={16} />
-              {sending ? "Sending…" : "Send request"}
-            </button>
-          </form>
+            )}
+          </div>
         </div>
+
+        {normalizedSearch.length < 3 ? (
+          <p className="border-t border-white/6 px-5 py-3 text-center text-xs text-slate-600">
+            Enter at least three characters to find someone.
+          </p>
+        ) : searchError ? (
+          <p className="border-t border-red-400/10 bg-red-400/5 px-5 py-3 text-center text-xs text-red-200">
+            {searchError}
+          </p>
+        ) : searchResults ? (
+          <div className="border-t border-white/6">
+            {searchResults.users.length ? (
+              <div className="people-list">
+                {searchResults.users.map((result) => (
+                  <div className="person-row" key={result.user.id}>
+                    <Person
+                      profileHref={
+                        result.relationship === "FRIEND"
+                          ? `/friends/${result.user.id}`
+                          : undefined
+                      }
+                      user={result.user}
+                    />
+                    {result.relationship === "NONE" && (
+                      <button
+                        className="compact-primary-button"
+                        type="button"
+                        disabled={activeSearchUserId === result.user.id}
+                        onClick={() => void handleSearchAction(result)}
+                      >
+                        <UserPlus aria-hidden="true" size={14} />
+                        {activeSearchUserId === result.user.id ? "Sending…" : "Add"}
+                      </button>
+                    )}
+                    {result.relationship === "INCOMING" && (
+                      <button
+                        className="compact-primary-button"
+                        type="button"
+                        disabled={activeSearchUserId === result.user.id}
+                        onClick={() => void handleSearchAction(result)}
+                      >
+                        <Check aria-hidden="true" size={14} />
+                        {activeSearchUserId === result.user.id ? "Accepting…" : "Accept"}
+                      </button>
+                    )}
+                    {result.relationship === "OUTGOING" && (
+                      <span className="inline-flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500">
+                        <Clock3 aria-hidden="true" size={14} /> Requested
+                      </span>
+                    )}
+                    {result.relationship === "FRIEND" && (
+                      <span className="inline-flex items-center gap-1.5 px-2 text-xs font-bold text-orange-300">
+                        <UserCheck aria-hidden="true" size={14} /> Friends
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyMessage>No matching LeetRank users found.</EmptyMessage>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {error && <div className="error-banner mt-4">{error}</div>}

@@ -302,12 +302,19 @@ def test_friend_request_api_flow(onboarding_client):
     ).json()
 
     provider.auth_user_id = alice_auth_user_id
+    search_before_send = client.get("/users/me/search?username=boB")
+    assert search_before_send.status_code == 200
+    assert search_before_send.json()["users"][0]["relationship"] == "NONE"
     sent = client.post(
         "/users/me/friend-requests",
         json={"username": "BoB"},
     )
     assert sent.status_code == 201
     assert sent.json()["user"]["username"] == "bob"
+    search_after_send = client.get("/users/me/search?username=boB")
+    assert search_after_send.status_code == 200
+    assert search_after_send.json()["users"][0]["relationship"] == "OUTGOING"
+    assert search_after_send.json()["users"][0]["friend_request_id"] == sent.json()["id"]
     pending_profile = client.get(f"/users/me/friends/{bob['id']}/profile")
     assert pending_profile.status_code == 404
 
@@ -323,6 +330,8 @@ def test_friend_request_api_flow(onboarding_client):
     assert accepted.json()["username"] == "alice"
 
     provider.auth_user_id = alice_auth_user_id
+    search_after_accept = client.get("/users/me/search?username=bob")
+    assert search_after_accept.json()["users"][0]["relationship"] == "FRIEND"
     alice_friends = client.get("/users/me/friends")
     assert alice_friends.status_code == 200
     assert alice_friends.json()["friends"][0]["username"] == "bob"

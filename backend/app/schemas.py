@@ -179,6 +179,23 @@ class FriendsResponse(BaseModel):
     friends: list[PublicUserSummary]
 
 
+class UserRelationship(StrEnum):
+    NONE = "NONE"
+    OUTGOING = "OUTGOING"
+    INCOMING = "INCOMING"
+    FRIEND = "FRIEND"
+
+
+class UserSearchItem(BaseModel):
+    user: PublicUserSummary
+    relationship: UserRelationship
+    friend_request_id: UUID | None
+
+
+class UserSearchResponse(BaseModel):
+    users: list[UserSearchItem]
+
+
 class FriendProfileUser(BaseModel):
     id: UUID
     username: str

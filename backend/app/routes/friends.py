@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -22,6 +22,8 @@ from app.schemas import (
     PublicUserSummary,
     PeriodScore,
     ScorePeriods,
+    UserSearchItem,
+    UserSearchResponse,
 )
 from app.services.friend_profiles import FriendProfileNotFoundError, get_friend_profile
 from app.services.friendships import (
@@ -41,6 +43,7 @@ from app.services.friendships import (
     remove_friend,
 )
 from app.services.leaderboards import LeaderboardUserNotFoundError, get_friends_leaderboard
+from app.services.user_search import search_users
 
 
 router = APIRouter(prefix="/users/me", tags=["friends"])
@@ -51,6 +54,44 @@ def _summary(user) -> PublicUserSummary:
         id=user.id,
         username=user.username,
         display_name=user.display_name,
+    )
+
+
+@router.get(
+    "/search",
+    response_model=UserSearchResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def search_leetrank_users(
+    username: str = Query(
+        min_length=3,
+        max_length=30,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_]*$",
+    ),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> UserSearchResponse:
+    try:
+        results = search_users(
+            session,
+            user_id=current_user.id,
+            username_prefix=username,
+        )
+    except FriendshipUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "user_not_found", "message": str(exc)},
+        ) from exc
+
+    return UserSearchResponse(
+        users=[
+            UserSearchItem(
+                user=_summary(result.user),
+                relationship=result.relationship,
+                friend_request_id=result.friend_request_id,
+            )
+            for result in results
+        ]
     )
 
 

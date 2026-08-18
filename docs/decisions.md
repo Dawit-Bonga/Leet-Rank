@@ -94,6 +94,9 @@
 - Every user chooses a unique LeetRank username during onboarding. Usernames
   are case-insensitive and stored in lowercase.
 - Friend requests use exact LeetRank usernames, not LeetCode or LinkedIn names.
+- Authenticated users can search by LeetRank username prefix. Results are
+  limited to ten public summaries and include relationship state so the
+  frontend never needs to guess whether a request can be sent.
 - A friendship exists only after the recipient accepts the request.
 - Accepted friendships are stored in both directions to keep friend and future
   friends-only leaderboard reads simple.

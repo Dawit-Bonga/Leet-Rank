@@ -86,6 +86,18 @@ export interface FriendsResponse {
   friends: PublicUserSummary[];
 }
 
+export type UserRelationship = "NONE" | "OUTGOING" | "INCOMING" | "FRIEND";
+
+export interface UserSearchItem {
+  user: PublicUserSummary;
+  relationship: UserRelationship;
+  friend_request_id: string | null;
+}
+
+export interface UserSearchResponse {
+  users: UserSearchItem[];
+}
+
 export interface PeriodScore {
   points: number;
   starts_at: string;
