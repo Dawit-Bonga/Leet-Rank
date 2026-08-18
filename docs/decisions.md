@@ -42,6 +42,18 @@
 - Alfa LeetCode API responses are normalized behind the LeetCode service so
   the provider can be replaced without changing scoring code.
 
+## V1 onboarding
+
+- Scoring starts only after the submitted LeetCode username is validated.
+- Onboarding records one primary goal, experience level, and weekly problem
+  goal. These fields personalize the product but do not change scoring.
+- A validated username is normalized to lowercase and can belong to only one
+  LeetRank user.
+- Username validation proves that the LeetCode account exists, not that the
+  LeetRank user owns it. Ownership verification is deferred beyond V1.
+- Until Supabase authentication is connected, development uses `POST /users`.
+  It will later become the authenticated `POST /users/me/onboarding` flow.
+
 # Product Rules
 Scoring begins when a LeetCode username is successfully connected.
 Previous LeetCode activity is ignored.

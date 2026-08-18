@@ -1,11 +1,19 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.database import Base
-from app.models import ScoreEvent, Submission, User, UserProblemStats
-from app.services.submission_sync import AcceptedSubmission, ProblemDetails, ingest_submission
+from app.models import ScoreEvent, Submission, User, UserProblemStats, UserSyncState
+from app.services.leetcode import UpstreamUnavailableError
+from app.services.submission_sync import (
+    AcceptedSubmission,
+    ProblemDetails,
+    SyncAlreadyRunningError,
+    ingest_submission,
+    sync_user_submissions,
+)
 
 
 def make_session() -> Session:
@@ -35,6 +43,22 @@ def submission(external_id: str, submitted_at: datetime) -> AcceptedSubmission:
 
 
 PROBLEM = ProblemDetails(slug="two-sum", title="Two Sum", difficulty="EASY")
+
+
+class FakeSubmissionProvider:
+    def __init__(self, submissions=None, error=None):
+        self.submissions = submissions or []
+        self.error = error
+        self.problem_requests = []
+
+    def get_accepted_submissions(self, username, limit=50):
+        if self.error is not None:
+            raise self.error
+        return list(self.submissions)
+
+    def get_problem(self, title_slug):
+        self.problem_requests.append(title_slug)
+        return PROBLEM
 
 
 def test_pre_signup_submission_is_not_stored():
@@ -95,3 +119,61 @@ def test_review_updates_stats_and_creates_audit_events():
         assert stats is not None
         assert stats.rewarded_solve_count == 2
         assert session.scalars(select(ScoreEvent)).all().__len__() == 3
+
+
+def test_user_sync_filters_history_sorts_and_scores_new_submissions():
+    with make_session() as session:
+        signup = datetime(2026, 1, 2, tzinfo=UTC)
+        user = add_user(session, signup)
+        session.add(UserSyncState(user_id=user.id, sync_status="IDLE"))
+        session.commit()
+        provider = FakeSubmissionProvider(
+            [
+                submission("2", signup + timedelta(days=1)),
+                submission("old", signup - timedelta(seconds=1)),
+                submission("1", signup + timedelta(minutes=1)),
+            ]
+        )
+
+        result = sync_user_submissions(session, provider, user_id=user.id)
+
+        assert result.status == "SUCCEEDED"
+        assert result.fetched == 3
+        assert result.new_submissions == 2
+        assert result.ignored_before_signup == 1
+        assert result.points_awarded == 10
+        assert provider.problem_requests == ["two-sum"]
+        assert session.get(UserSyncState, user.id).sync_status == "SUCCEEDED"
+
+        repeated = sync_user_submissions(session, provider, user_id=user.id)
+        assert repeated.duplicate_submissions == 2
+        assert repeated.new_submissions == 0
+        assert repeated.points_awarded == 0
+        assert provider.problem_requests == ["two-sum"]
+
+
+def test_user_sync_records_provider_failure():
+    with make_session() as session:
+        signup = datetime(2026, 1, 2, tzinfo=UTC)
+        user = add_user(session, signup)
+        session.add(UserSyncState(user_id=user.id, sync_status="IDLE"))
+        session.commit()
+        provider = FakeSubmissionProvider(error=UpstreamUnavailableError("Provider unavailable."))
+
+        with pytest.raises(UpstreamUnavailableError):
+            sync_user_submissions(session, provider, user_id=user.id)
+
+        state = session.get(UserSyncState, user.id)
+        assert state.sync_status == "FAILED"
+        assert state.last_error == "Provider unavailable."
+
+
+def test_user_sync_rejects_overlapping_run():
+    with make_session() as session:
+        signup = datetime(2026, 1, 2, tzinfo=UTC)
+        user = add_user(session, signup)
+        session.add(UserSyncState(user_id=user.id, sync_status="RUNNING"))
+        session.commit()
+
+        with pytest.raises(SyncAlreadyRunningError):
+            sync_user_submissions(session, FakeSubmissionProvider(), user_id=user.id)

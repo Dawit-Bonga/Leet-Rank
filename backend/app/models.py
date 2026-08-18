@@ -11,12 +11,31 @@ from app.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "primary_goal IS NULL OR primary_goal IN "
+            "('ACCOUNTABILITY', 'CONSISTENCY', 'COMPETITION', 'INTERVIEW_PREP', 'LEARNING')",
+            name="ck_users_primary_goal",
+        ),
+        CheckConstraint(
+            "leetcode_experience IS NULL OR leetcode_experience IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')",
+            name="ck_users_leetcode_experience",
+        ),
+        CheckConstraint(
+            "weekly_problem_goal IS NULL OR weekly_problem_goal BETWEEN 1 AND 100",
+            name="ck_users_weekly_problem_goal",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     auth_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, unique=True)
     leetcode_username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    primary_goal: Mapped[str | None] = mapped_column(String(24))
+    leetcode_experience: Mapped[str | None] = mapped_column(String(16))
+    weekly_problem_goal: Mapped[int | None] = mapped_column(Integer)
     scoring_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 

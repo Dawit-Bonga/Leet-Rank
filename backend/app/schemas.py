@@ -1,4 +1,8 @@
-from pydantic import BaseModel
+from datetime import datetime
+from enum import StrEnum
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Submission(BaseModel):
@@ -11,6 +15,55 @@ class UserSubmissionsResponse(BaseModel):
     submissions: list[Submission]
 
 
-class ErrorResponse(BaseModel):
+class ErrorDetail(BaseModel):
     code: str
     message: str
+
+
+class ErrorResponse(BaseModel):
+    detail: ErrorDetail
+
+
+class PrimaryGoal(StrEnum):
+    ACCOUNTABILITY = "ACCOUNTABILITY"
+    CONSISTENCY = "CONSISTENCY"
+    COMPETITION = "COMPETITION"
+    INTERVIEW_PREP = "INTERVIEW_PREP"
+    LEARNING = "LEARNING"
+
+
+class LeetCodeExperience(StrEnum):
+    BEGINNER = "BEGINNER"
+    INTERMEDIATE = "INTERMEDIATE"
+    ADVANCED = "ADVANCED"
+
+
+class UserOnboardingRequest(BaseModel):
+    display_name: str = Field(min_length=1, max_length=100)
+    leetcode_username: str = Field(min_length=1, max_length=64)
+    primary_goal: PrimaryGoal
+    leetcode_experience: LeetCodeExperience
+    weekly_problem_goal: int = Field(ge=1, le=100)
+
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    display_name: str
+    leetcode_username: str
+    primary_goal: PrimaryGoal
+    leetcode_experience: LeetCodeExperience
+    weekly_problem_goal: int
+    scoring_started_at: datetime
+    onboarding_completed_at: datetime
+    sync_status: str
+
+
+class UserSyncResponse(BaseModel):
+    status: str
+    fetched: int
+    new_submissions: int
+    duplicate_submissions: int
+    ignored_before_signup: int
+    points_awarded: int
