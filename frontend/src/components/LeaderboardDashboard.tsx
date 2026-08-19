@@ -13,7 +13,7 @@ import type {
 import { ActivityFeed } from "./ActivityFeed";
 import { SyncStatus } from "./SyncStatus";
 import { UserAvatar } from "./UserAvatar";
-import { WeeklyGoalProgress } from "./WeeklyGoalProgress";
+import { WeeklyActivityChart } from "./WeeklyActivityChart";
 
 interface LeaderboardDashboardProps {
   accessToken: string;
@@ -135,6 +135,21 @@ export function LeaderboardDashboard({ accessToken, profile }: LeaderboardDashbo
         </div>
       </section>
 
+      {activityLoading ? (
+        <div className="mt-5 h-72 animate-pulse rounded-2xl bg-white/4" />
+      ) : activityFailed ? (
+        <section className="panel mt-5 p-5 text-center text-xs text-slate-500">
+          Seven-day activity is temporarily unavailable.
+        </section>
+      ) : (
+        <WeeklyActivityChart
+          asOf={leaderboard?.as_of}
+          completed={weeklyCompleted}
+          goal={profile.weekly_problem_goal}
+          items={activity?.items ?? []}
+        />
+      )}
+
       <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
         <section className="panel" aria-busy={loading}>
           <div className="panel-header flex-col items-stretch sm:flex-row sm:items-center">
@@ -231,12 +246,6 @@ export function LeaderboardDashboard({ accessToken, profile }: LeaderboardDashbo
         </section>
 
         <aside className="space-y-5">
-          {activityLoading ? (
-            <div className="h-36 animate-pulse rounded-2xl bg-white/4" />
-          ) : (
-            <WeeklyGoalProgress completed={weeklyCompleted} goal={profile.weekly_problem_goal} />
-          )}
-
           <section className="panel">
             <div className="panel-header">
               <div>
