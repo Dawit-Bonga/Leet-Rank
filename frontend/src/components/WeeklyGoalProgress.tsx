@@ -19,7 +19,7 @@ export function WeeklyGoalProgress({
     <div className={compact ? "" : "panel panel-accent p-5"}>
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <span className="icon-chip icon-chip-orange">
+          <span className="icon-chip icon-chip-teal">
             <Target aria-hidden="true" size={17} />
           </span>
           <div>
@@ -41,7 +41,7 @@ export function WeeklyGoalProgress({
         role="progressbar"
       >
         <div
-          className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 shadow-[0_0_16px_rgba(251,146,60,0.35)] transition-[width] duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-teal-600 to-teal-300 shadow-[0_0_16px_rgba(45,212,191,0.28)] transition-[width] duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>

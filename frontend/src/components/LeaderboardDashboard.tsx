@@ -171,7 +171,10 @@ export function LeaderboardDashboard({ accessToken, profile }: LeaderboardDashbo
               ))}
             </div>
           ) : leaderboard ? (
-            <div className={loading ? "opacity-70 transition-opacity" : "transition-opacity"}>
+            <div
+              className={`leaderboard-content-enter ${loading ? "opacity-70 transition-opacity" : "transition-opacity"}`}
+              key={leaderboard.period}
+            >
               {leaderboard.entries.map((entry) => (
                 <Link
                   className={`leaderboard-row ${entry.rank <= 3 ? "leaderboard-row-top" : ""} ${entry.rank === 1 ? "leaderboard-row-first" : ""} ${entry.is_current_user ? "leaderboard-row-current" : ""}`}
@@ -179,7 +182,7 @@ export function LeaderboardDashboard({ accessToken, profile }: LeaderboardDashbo
                   to={entry.is_current_user ? "/profile" : `/friends/${entry.user.id}`}
                 >
                   <div className="flex items-center">
-                    <span className={`rank-badge ${entry.rank === 1 ? "rank-badge-first" : ""}`}>
+                    <span className={`rank-badge ${entry.rank === 1 ? "rank-badge-first" : entry.rank === 2 ? "rank-badge-second" : entry.rank === 3 ? "rank-badge-third" : ""}`}>
                       {entry.rank === 1 ? <Crown aria-label="First place" size={16} /> : entry.rank}
                     </span>
                   </div>

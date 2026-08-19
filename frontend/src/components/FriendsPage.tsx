@@ -31,6 +31,7 @@ import type {
   UserSearchResponse,
 } from "../types/api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmptyState } from "./EmptyState";
 import { UserAvatar } from "./UserAvatar";
 
 interface FriendsPageProps {
@@ -56,10 +57,6 @@ function Person({ user, profileHref }: { user: PublicUserSummary; profileHref?: 
       {content}
     </Link>
   ) : content;
-}
-
-function EmptyMessage({ children }: { children: string }) {
-  return <div className="empty-compact">{children}</div>;
 }
 
 export function FriendsPage({ accessToken }: FriendsPageProps) {
@@ -368,7 +365,12 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
                 ))}
               </div>
             ) : (
-              <EmptyMessage>No matching LeetRank users found.</EmptyMessage>
+              <EmptyState
+                compact
+                description="Try another LeetRank username."
+                icon={Search}
+                title="No matching users"
+              />
             )}
           </div>
         ) : null}
@@ -421,7 +423,11 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
                   </div>
                 ))
               ) : (
-                <EmptyMessage>No friends yet. Add someone above to start competing.</EmptyMessage>
+                <EmptyState
+                  description="Search above to build your first leaderboard."
+                  icon={UsersRound}
+                  title="Your circle is waiting"
+                />
               )}
             </div>
           </section>
@@ -475,7 +481,12 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
                     </div>
                   ))
                 ) : (
-                  <EmptyMessage>No incoming requests.</EmptyMessage>
+                  <EmptyState
+                    compact
+                    description="New requests will appear here."
+                    icon={Inbox}
+                    title="Inbox clear"
+                  />
                 )}
               </div>
             </section>
@@ -516,7 +527,12 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
                     </div>
                   ))
                 ) : (
-                  <EmptyMessage>No sent requests.</EmptyMessage>
+                  <EmptyState
+                    compact
+                    description="Requests you send will stay here until answered."
+                    icon={Send}
+                    title="Nothing pending"
+                  />
                 )}
               </div>
             </section>
