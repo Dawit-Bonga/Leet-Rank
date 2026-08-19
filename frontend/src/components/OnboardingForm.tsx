@@ -115,7 +115,7 @@ export function OnboardingForm({
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">@</span>
                   <input
-                    className="field-input pl-9"
+                    className="field-input field-input-leading"
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="dawit"

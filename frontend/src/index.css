@@ -133,6 +133,18 @@ button:disabled {
   @apply w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 hover:border-white/15 focus:border-orange-400/60 focus:ring-4 focus:ring-orange-400/8;
 }
 
+.field-input-leading {
+  @apply pl-11;
+}
+
+.field-input-trailing {
+  @apply pr-11;
+}
+
+.field-input-compact {
+  @apply py-3;
+}
+
 .primary-button {
   @apply inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-orange-500/15 transition hover:-translate-y-0.5 hover:bg-orange-400 focus:outline-none focus:ring-4 focus:ring-orange-400/20;
 }

@@ -304,7 +304,7 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
             />
             <input
               aria-label="Search LeetRank usernames"
-              className="field-input py-3 pl-11 pr-11"
+              className="field-input field-input-compact field-input-leading field-input-trailing"
               type="search"
               value={username}
               onChange={(event) => {

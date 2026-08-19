@@ -114,7 +114,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
                   size={16}
                 />
                 <input
-                  className="field-input pl-11"
+                  className="field-input field-input-leading"
                   value={displayName}
                   onChange={(event) => {
                     setDisplayName(event.target.value);
@@ -183,7 +183,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
                     size={16}
                   />
                   <input
-                    className="field-input pl-11"
+                    className="field-input field-input-leading"
                     type="number"
                     min={1}
                     max={100}
