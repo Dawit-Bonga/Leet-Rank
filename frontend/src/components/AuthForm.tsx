@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, KeyRound } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 
 import { supabase } from "../lib/supabase";
 import { Brand } from "./Brand";
@@ -7,11 +8,13 @@ import { Brand } from "./Brand";
 type AuthMode = "login" | "signup" | "forgot";
 
 interface AuthFormProps {
+  initialMode?: Exclude<AuthMode, "forgot">;
   initialNotice?: string | null;
 }
 
-export function AuthForm({ initialNotice = null }: AuthFormProps) {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function AuthForm({ initialMode = "login", initialNotice = null }: AuthFormProps) {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,6 +24,11 @@ export function AuthForm({ initialNotice = null }: AuthFormProps) {
   useEffect(() => {
     if (initialNotice) setNotice(initialNotice);
   }, [initialNotice]);
+
+  useEffect(() => {
+    setMode(initialMode);
+    setError(null);
+  }, [initialMode]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,6 +71,9 @@ export function AuthForm({ initialNotice = null }: AuthFormProps) {
   }
 
   function changeMode(nextMode: AuthMode) {
+    if (nextMode !== "forgot") {
+      navigate(nextMode === "login" ? "/sign-in" : "/sign-up");
+    }
     setMode(nextMode);
     setError(null);
     setNotice(null);
@@ -73,9 +84,9 @@ export function AuthForm({ initialNotice = null }: AuthFormProps) {
       <section className="relative hidden overflow-hidden border-r border-white/5 bg-slate-950 p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="absolute inset-0 auth-grid opacity-40" />
         <div className="absolute -left-32 top-1/3 size-96 rounded-full bg-orange-500/10 blur-3xl" />
-        <div className="relative z-10">
+        <Link className="relative z-10 w-fit rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-400/20" to="/">
           <Brand />
-        </div>
+        </Link>
         <div className="relative z-10 max-w-xl pb-16">
           <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-orange-300">
             Friendly accountability
@@ -94,7 +105,9 @@ export function AuthForm({ initialNotice = null }: AuthFormProps) {
       <section className="flex min-h-screen items-center justify-center bg-slate-900/78 px-5 py-12 sm:px-10">
         <div className="w-full max-w-md">
           <div className="mb-10 lg:hidden">
-            <Brand />
+            <Link className="inline-block rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-400/20" to="/">
+              <Brand />
+            </Link>
           </div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-400">
             {mode === "login"
@@ -194,6 +207,12 @@ export function AuthForm({ initialNotice = null }: AuthFormProps) {
               </button>
             </p>
           )}
+          <Link
+            className="mx-auto mt-5 flex w-fit items-center gap-2 text-xs font-bold text-slate-600 transition hover:text-slate-300"
+            to="/"
+          >
+            <ArrowLeft aria-hidden="true" size={13} /> Back to LeetRank
+          </Link>
         </div>
       </section>
     </main>

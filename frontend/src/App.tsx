@@ -5,6 +5,7 @@ import { Navigate, Route, Routes } from "react-router";
 import { AppShell } from "./components/AppShell";
 import { AuthForm } from "./components/AuthForm";
 import { Brand } from "./components/Brand";
+import { LandingPage } from "./components/LandingPage";
 import { LeaderboardDashboard } from "./components/LeaderboardDashboard";
 import { OnboardingForm } from "./components/OnboardingForm";
 import { ResetPasswordForm } from "./components/ResetPasswordForm";
@@ -128,7 +129,7 @@ export default function App() {
       setAuthNotice(null);
       throw error;
     }
-    window.history.replaceState({}, "", "/");
+    window.history.replaceState({}, "", "/sign-in");
     setPasswordRecoveryActive(false);
   }
 
@@ -148,7 +149,17 @@ export default function App() {
     return <FullPageLoading backendStarting={accountSlow} />;
   }
   if (!session) {
-    return <AuthForm initialNotice={authNotice} />;
+    return (
+      <Routes>
+        <Route index element={<LandingPage />} />
+        <Route
+          path="sign-in"
+          element={<AuthForm initialMode="login" initialNotice={authNotice} />}
+        />
+        <Route path="sign-up" element={<AuthForm initialMode="signup" />} />
+        <Route path="*" element={<Navigate replace to="/" />} />
+      </Routes>
+    );
   }
   if (accountError && !account) {
     return (

@@ -2,6 +2,7 @@ import { Check, Code2 } from "lucide-react";
 
 import { formatTimestamp, readableLabel } from "../lib/format";
 import type { ActivityItem } from "../types/api";
+import { EmptyState } from "./EmptyState";
 
 interface ActivityFeedProps {
   items: ActivityItem[];
@@ -22,7 +23,14 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const visibleItems = items.slice(0, limit);
   if (visibleItems.length === 0) {
-    return <div className="empty-compact">{emptyMessage}</div>;
+    return (
+      <EmptyState
+        compact
+        description={emptyMessage}
+        icon={Code2}
+        title="No scored solves yet"
+      />
+    );
   }
 
   return (
