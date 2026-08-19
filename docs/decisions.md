@@ -59,6 +59,10 @@
   uses their real LeetCode submission IDs for deduplication.
 - One user's failure does not stop the remaining batch. A `RUNNING` state older
   than 30 minutes is treated as abandoned and recovered by the next job.
+- LeetRank tables are not a browser-facing Supabase Data API. Row Level
+  Security is enabled without client policies, and the `anon` and
+  `authenticated` roles have no direct table privileges. All application data
+  access goes through FastAPI.
 
 ## V1 authentication
 
