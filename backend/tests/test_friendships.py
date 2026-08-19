@@ -14,6 +14,7 @@ from app.services.friendships import (
     accept_friend_request,
     create_friend_request,
     delete_friend_request,
+    get_friends_overview,
     list_friend_requests,
     list_friends,
     remove_friend,
@@ -57,6 +58,12 @@ def test_request_accept_list_and_remove_friendship():
         assert alice_outgoing[0][1].id == bob.id
         assert bob_incoming[0][1].id == alice.id
         assert bob_outgoing == []
+
+        overview = get_friends_overview(session, user_id=bob.id)
+        assert overview.friends == []
+        assert overview.incoming[0][1].id == alice.id
+        assert overview.outgoing == []
+        assert overview.as_of.tzinfo is not None
 
         accepted_friend = accept_friend_request(
             session,

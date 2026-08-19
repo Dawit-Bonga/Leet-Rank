@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { ChevronDown, LayoutDashboard, LogOut, Settings, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
+import { useFriendsData } from "../context/FriendsDataContext";
 import type { UserProfile } from "../types/api";
 import { Brand } from "./Brand";
 import { UserAvatar } from "./UserAvatar";
 
 interface AppShellProps {
   profile: UserProfile;
-  pendingRequests: number;
   onSignOut: () => Promise<void>;
 }
 
@@ -23,10 +23,12 @@ const navigation: Array<{
   { to: "/profile", label: "Profile", icon: UserRound, end: false },
 ];
 
-export function AppShell({ profile, pendingRequests, onSignOut }: AppShellProps) {
+export function AppShell({ profile, onSignOut }: AppShellProps) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const { overview } = useFriendsData();
+  const pendingRequests = overview?.incoming.length ?? 0;
 
   useEffect(() => {
     setAccountMenuOpen(false);
@@ -134,7 +136,19 @@ export function AppShell({ profile, pendingRequests, onSignOut }: AppShellProps)
         </div>
       </header>
 
-      <Outlet />
+      <Suspense
+        fallback={
+          <main className="page-container">
+            <div className="h-9 w-48 animate-pulse rounded-lg bg-white/5" />
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <div className="h-72 animate-pulse rounded-2xl bg-white/4" />
+              <div className="h-72 animate-pulse rounded-2xl bg-white/4" />
+            </div>
+          </main>
+        }
+      >
+        <Outlet />
+      </Suspense>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-white/8 bg-slate-950/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
         {navigation.map((item) => {

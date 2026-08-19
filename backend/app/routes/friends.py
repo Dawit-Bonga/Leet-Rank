@@ -15,6 +15,7 @@ from app.schemas import (
     FriendRequestCreate,
     FriendRequestItem,
     FriendRequestsResponse,
+    FriendsOverviewResponse,
     FriendsResponse,
     LeaderboardEntry,
     LeaderboardPeriod,
@@ -38,6 +39,7 @@ from app.services.friendships import (
     accept_friend_request,
     create_friend_request,
     delete_friend_request,
+    get_friends_overview,
     list_friend_requests,
     list_friends,
     remove_friend,
@@ -268,6 +270,36 @@ def get_friends(
             detail={"code": "user_not_found", "message": str(exc)},
         ) from exc
     return FriendsResponse(friends=[_summary(friend) for friend in friends])
+
+
+@router.get(
+    "/friends/overview",
+    response_model=FriendsOverviewResponse,
+    responses={404: {"model": ErrorResponse}},
+)
+def get_friend_overview(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> FriendsOverviewResponse:
+    try:
+        overview = get_friends_overview(session, user_id=current_user.id)
+    except FriendshipUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "user_not_found", "message": str(exc)},
+        ) from exc
+    return FriendsOverviewResponse(
+        friends=[_summary(friend) for friend in overview.friends],
+        incoming=[
+            FriendRequestItem(id=item.id, user=_summary(user), created_at=item.created_at)
+            for item, user in overview.incoming
+        ],
+        outgoing=[
+            FriendRequestItem(id=item.id, user=_summary(user), created_at=item.created_at)
+            for item, user in overview.outgoing
+        ],
+        as_of=overview.as_of,
+    )
 
 
 @router.get(
