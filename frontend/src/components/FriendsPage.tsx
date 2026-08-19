@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Check,
   Clock3,
@@ -18,17 +18,14 @@ import {
   acceptFriendRequest,
   ApiError,
   deleteFriendRequest,
-  getFriendRequests,
-  getFriends,
   removeFriend,
   searchUsers,
   sendFriendRequest,
 } from "../lib/api";
+import { useFriendsData } from "../context/FriendsDataContext";
 import { formatTimestamp } from "../lib/format";
 import type {
   FriendRequestItem,
-  FriendRequestsResponse,
-  FriendsResponse,
   PublicUserSummary,
   UserSearchItem,
   UserSearchResponse,
@@ -38,7 +35,6 @@ import { UserAvatar } from "./UserAvatar";
 
 interface FriendsPageProps {
   accessToken: string;
-  onPendingCountChange: (count: number) => void;
 }
 
 function Person({ user, profileHref }: { user: PublicUserSummary; profileHref?: string }) {
@@ -66,42 +62,28 @@ function EmptyMessage({ children }: { children: string }) {
   return <div className="empty-compact">{children}</div>;
 }
 
-export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPageProps) {
-  const [friends, setFriends] = useState<FriendsResponse | null>(null);
-  const [requests, setRequests] = useState<FriendRequestsResponse | null>(null);
+export function FriendsPage({ accessToken }: FriendsPageProps) {
+  const {
+    overview,
+    initialLoading: loading,
+    refreshing,
+    error: overviewError,
+    refresh,
+  } = useFriendsData();
   const [username, setUsername] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResponse | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activeSearchUserId, setActiveSearchUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [friendToRemove, setFriendToRemove] = useState<PublicUserSummary | null>(null);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const loadFriends = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [friendData, requestData] = await Promise.all([
-        getFriends(accessToken),
-        getFriendRequests(accessToken),
-      ]);
-      setFriends(friendData);
-      setRequests(requestData);
-      onPendingCountChange(requestData.incoming.length);
-    } catch (caughtError) {
-      setError(caughtError instanceof ApiError ? caughtError.message : "Could not load friends.");
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, onPendingCountChange]);
-
   useEffect(() => {
-    void loadFriends();
-  }, [loadFriends]);
+    void refresh();
+  }, [refresh]);
 
   const normalizedSearch = username.trim().replace(/^@/, "");
 
@@ -191,7 +173,7 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
             : current,
         );
       }
-      await loadFriends();
+      await refresh({ force: true });
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError ? caughtError.message : "Could not send friend request.",
@@ -231,7 +213,7 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
           : current,
       );
       setNotice(successMessage);
-      await loadFriends();
+      await refresh({ force: true });
     } catch (caughtError) {
       setError(caughtError instanceof ApiError ? caughtError.message : "Could not update request.");
     } finally {
@@ -258,7 +240,7 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
       );
       setNotice(`@${friendToRemove.username} was removed from your friends.`);
       setFriendToRemove(null);
-      await loadFriends();
+      await refresh({ force: true });
     } catch (caughtError) {
       setError(caughtError instanceof ApiError ? caughtError.message : "Could not remove friend.");
     } finally {
@@ -266,8 +248,8 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
     }
   }
 
-  const friendCount = friends?.friends.length ?? 0;
-  const incomingCount = requests?.incoming.length ?? 0;
+  const friendCount = overview?.friends.length ?? 0;
+  const incomingCount = overview?.incoming.length ?? 0;
 
   return (
     <main className="page-container">
@@ -280,7 +262,11 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
           </p>
         </div>
         <div className="sync-status">
-          <UsersRound aria-hidden="true" size={15} />
+          {refreshing ? (
+            <LoaderCircle aria-label="Updating friends" className="animate-spin" size={15} />
+          ) : (
+            <UsersRound aria-hidden="true" size={15} />
+          )}
           <span><strong className="text-white">{friendCount}</strong> of 20 friends</span>
         </div>
       </section>
@@ -388,10 +374,17 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
         ) : null}
       </section>
 
-      {error && <div className="error-banner mt-4">{error}</div>}
+      {(error || overviewError) && (
+        <div className="error-banner mt-4">
+          {error ||
+            (overview
+              ? `${overviewError} Showing the most recently loaded information.`
+              : overviewError)}
+        </div>
+      )}
       {notice && <div className="success-banner mt-4">{notice}</div>}
 
-      {loading && !friends ? (
+      {loading && !overview ? (
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
           <div className="h-72 animate-pulse rounded-2xl bg-white/4" />
           <div className="h-56 animate-pulse rounded-2xl bg-white/4" />
@@ -412,8 +405,8 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
               <span className="count-badge">{friendCount}</span>
             </div>
             <div className="people-list">
-              {friends?.friends.length ? (
-                friends.friends.map((friend) => (
+              {overview?.friends.length ? (
+                overview.friends.map((friend) => (
                   <div className="person-row" key={friend.id}>
                     <Person profileHref={`/friends/${friend.id}`} user={friend} />
                     <button
@@ -448,8 +441,8 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
                 <span className="count-badge">{incomingCount}</span>
               </div>
               <div className="people-list">
-                {requests?.incoming.length ? (
-                  requests.incoming.map((request) => (
+                {overview?.incoming.length ? (
+                  overview.incoming.map((request) => (
                     <div className="px-4 py-3.5" key={request.id}>
                       <Person user={request.user} />
                       <div className="ml-14 mt-3 flex gap-2">
@@ -498,11 +491,11 @@ export function FriendsPage({ accessToken, onPendingCountChange }: FriendsPagePr
                     <p className="section-kicker">Awaiting a response</p>
                   </div>
                 </div>
-                <span className="count-badge">{requests?.outgoing.length ?? 0}</span>
+              <span className="count-badge">{overview?.outgoing.length ?? 0}</span>
               </div>
               <div className="people-list">
-                {requests?.outgoing.length ? (
-                  requests.outgoing.map((request) => (
+                {overview?.outgoing.length ? (
+                  overview.outgoing.map((request) => (
                     <div className="px-4 py-3.5" key={request.id}>
                       <Person user={request.user} />
                       <div className="ml-14 mt-2 flex items-center justify-between gap-3">

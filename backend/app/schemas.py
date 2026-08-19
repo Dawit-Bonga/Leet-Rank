@@ -179,6 +179,13 @@ class FriendsResponse(BaseModel):
     friends: list[PublicUserSummary]
 
 
+class FriendsOverviewResponse(BaseModel):
+    friends: list[PublicUserSummary]
+    incoming: list[FriendRequestItem]
+    outgoing: list[FriendRequestItem]
+    as_of: datetime
+
+
 class UserRelationship(StrEnum):
     NONE = "NONE"
     OUTGOING = "OUTGOING"

@@ -86,6 +86,13 @@ export interface FriendsResponse {
   friends: PublicUserSummary[];
 }
 
+export interface FriendsOverviewResponse {
+  friends: PublicUserSummary[];
+  incoming: FriendRequestItem[];
+  outgoing: FriendRequestItem[];
+  as_of: string;
+}
+
 export type UserRelationship = "NONE" | "OUTGOING" | "INCOMING" | "FRIEND";
 
 export interface UserSearchItem {

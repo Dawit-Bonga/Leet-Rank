@@ -322,6 +322,12 @@ def test_friend_request_api_flow(onboarding_client):
     pending = client.get("/users/me/friend-requests")
     assert pending.status_code == 200
     assert pending.json()["incoming"][0]["user"]["username"] == "alice"
+    pending_overview = client.get("/users/me/friends/overview")
+    assert pending_overview.status_code == 200
+    assert pending_overview.json()["friends"] == []
+    assert pending_overview.json()["incoming"][0]["user"]["username"] == "alice"
+    assert pending_overview.json()["outgoing"] == []
+    assert pending_overview.json()["as_of"].endswith("Z")
 
     accepted = client.post(
         f"/users/me/friend-requests/{sent.json()['id']}/accept"
@@ -335,6 +341,11 @@ def test_friend_request_api_flow(onboarding_client):
     alice_friends = client.get("/users/me/friends")
     assert alice_friends.status_code == 200
     assert alice_friends.json()["friends"][0]["username"] == "bob"
+    alice_overview = client.get("/users/me/friends/overview")
+    assert alice_overview.status_code == 200
+    assert alice_overview.json()["friends"][0]["username"] == "bob"
+    assert alice_overview.json()["incoming"] == []
+    assert alice_overview.json()["outgoing"] == []
 
     leaderboard = client.get("/users/me/leaderboard?period=week")
     assert leaderboard.status_code == 200

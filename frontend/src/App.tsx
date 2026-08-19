@@ -1,28 +1,47 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes } from "react-router";
 
 import { AppShell } from "./components/AppShell";
 import { AuthForm } from "./components/AuthForm";
 import { Brand } from "./components/Brand";
-import { FriendsPage } from "./components/FriendsPage";
-import { FriendProfilePage } from "./components/FriendProfilePage";
 import { LeaderboardDashboard } from "./components/LeaderboardDashboard";
 import { OnboardingForm } from "./components/OnboardingForm";
-import { ProfilePage } from "./components/ProfilePage";
 import { ResetPasswordForm } from "./components/ResetPasswordForm";
-import { SettingsPage } from "./components/SettingsPage";
-import { ApiError, getCurrentUser, getFriendRequests } from "./lib/api";
+import { FriendsDataProvider } from "./context/FriendsDataContext";
+import { ApiError, getCurrentUser, warmBackend } from "./lib/api";
 import { supabase } from "./lib/supabase";
 import type { CurrentUser } from "./types/api";
 
-function FullPageLoading() {
+const FriendsPage = lazy(() =>
+  import("./components/FriendsPage").then((module) => ({ default: module.FriendsPage })),
+);
+const FriendProfilePage = lazy(() =>
+  import("./components/FriendProfilePage").then((module) => ({
+    default: module.FriendProfilePage,
+  })),
+);
+const ProfilePage = lazy(() =>
+  import("./components/ProfilePage").then((module) => ({ default: module.ProfilePage })),
+);
+const SettingsPage = lazy(() =>
+  import("./components/SettingsPage").then((module) => ({ default: module.SettingsPage })),
+);
+
+function FullPageLoading({ backendStarting = false }: { backendStarting?: boolean }) {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 px-5">
       <div className="text-center">
         <div className="mx-auto mb-5 size-10 animate-spin rounded-full border-2 border-slate-700 border-t-orange-400" />
         <Brand />
-        <p className="mt-4 text-sm text-slate-500">Loading your account…</p>
+        <p className="mt-4 text-sm text-slate-500">
+          {backendStarting ? "Starting LeetRank…" : "Loading your account…"}
+        </p>
+        {backendStarting && (
+          <p className="mt-2 text-xs text-slate-600">
+            The server is waking up. This can take up to a minute.
+          </p>
+        )}
       </div>
     </main>
   );
@@ -32,8 +51,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [account, setAccount] = useState<CurrentUser | null>(null);
   const [accountLoading, setAccountLoading] = useState(false);
+  const [accountSlow, setAccountSlow] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
-  const [pendingRequests, setPendingRequests] = useState(0);
+  const accountLoadSequence = useRef(0);
   const [passwordRecoveryActive, setPasswordRecoveryActive] = useState(() => {
     const hash = new URLSearchParams(window.location.hash.slice(1));
     return hash.get("type") === "recovery";
@@ -45,6 +65,10 @@ export default function App() {
     recoveryParameters.get("error_description")?.replaceAll("+", " ") ?? null;
 
   useEffect(() => {
+    void warmBackend();
+  }, []);
+
+  useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const {
       data: { subscription },
@@ -54,7 +78,6 @@ export default function App() {
       if (!nextSession) {
         setAccount(null);
         setAccountError(null);
-        setPendingRequests(0);
       }
     });
     return () => subscription.unsubscribe();
@@ -62,8 +85,13 @@ export default function App() {
 
   const loadAccount = useCallback(async () => {
     if (!session) return;
+    const requestId = ++accountLoadSequence.current;
     setAccountLoading(true);
+    setAccountSlow(false);
     setAccountError(null);
+    const slowTimer = window.setTimeout(() => {
+      if (accountLoadSequence.current === requestId) setAccountSlow(true);
+    }, 2_000);
     try {
       setAccount(await getCurrentUser(session.access_token));
     } catch (caughtError) {
@@ -77,28 +105,17 @@ export default function App() {
         );
       }
     } finally {
-      setAccountLoading(false);
+      window.clearTimeout(slowTimer);
+      if (accountLoadSequence.current === requestId) {
+        setAccountLoading(false);
+        setAccountSlow(false);
+      }
     }
   }, [session]);
 
   useEffect(() => {
     if (session && !passwordRecoveryPath) void loadAccount();
   }, [session, loadAccount, passwordRecoveryPath]);
-
-  useEffect(() => {
-    if (!session || !account?.onboarding_completed || passwordRecoveryPath) return;
-    let active = true;
-    void getFriendRequests(session.access_token)
-      .then((requests) => {
-        if (active) setPendingRequests(requests.incoming.length);
-      })
-      .catch(() => {
-        // The Friends page surfaces request errors; the shell badge is best-effort.
-      });
-    return () => {
-      active = false;
-    };
-  }, [account?.onboarding_completed, passwordRecoveryPath, session]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -128,7 +145,7 @@ export default function App() {
     );
   }
   if (session && accountLoading && !account) {
-    return <FullPageLoading />;
+    return <FullPageLoading backendStarting={accountSlow} />;
   }
   if (!session) {
     return <AuthForm initialNotice={authNotice} />;
@@ -165,56 +182,48 @@ export default function App() {
     );
   }
   return (
-    <Routes>
-      <Route
-        element={
-          <AppShell
-            onSignOut={signOut}
-            profile={account.profile}
-            pendingRequests={pendingRequests}
+    <FriendsDataProvider accessToken={session.access_token}>
+      <Routes>
+        <Route element={<AppShell onSignOut={signOut} profile={account.profile} />}>
+          <Route
+            index
+            element={
+              <LeaderboardDashboard
+                accessToken={session.access_token}
+                profile={account.profile}
+              />
+            }
           />
-        }
-      >
-        <Route
-          index
-          element={
-            <LeaderboardDashboard accessToken={session.access_token} profile={account.profile} />
-          }
-        />
-        <Route
-          path="friends"
-          element={
-            <FriendsPage
-              accessToken={session.access_token}
-              onPendingCountChange={setPendingRequests}
-            />
-          }
-        />
-        <Route
-          path="friends/:friendId"
-          element={<FriendProfilePage accessToken={session.access_token} />}
-        />
-        <Route
-          path="profile"
-          element={
-            <ProfilePage
-              accessToken={session.access_token}
-              profile={account.profile}
-            />
-          }
-        />
-        <Route
-          path="settings"
-          element={
-            <SettingsPage
-              accessToken={session.access_token}
-              profile={account.profile}
-              onSaved={loadAccount}
-            />
-          }
-        />
-      </Route>
-      <Route path="*" element={<Navigate replace to="/" />} />
-    </Routes>
+          <Route
+            path="friends"
+            element={<FriendsPage accessToken={session.access_token} />}
+          />
+          <Route
+            path="friends/:friendId"
+            element={<FriendProfilePage accessToken={session.access_token} />}
+          />
+          <Route
+            path="profile"
+            element={
+              <ProfilePage
+                accessToken={session.access_token}
+                profile={account.profile}
+              />
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <SettingsPage
+                accessToken={session.access_token}
+                profile={account.profile}
+                onSaved={loadAccount}
+              />
+            }
+          />
+        </Route>
+        <Route path="*" element={<Navigate replace to="/" />} />
+      </Routes>
+    </FriendsDataProvider>
   );
 }

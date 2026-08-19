@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, delete, func, or_, select
@@ -42,6 +44,14 @@ class FriendshipNotFoundError(Exception):
 
 class FriendLimitReachedError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class FriendsOverviewResult:
+    friends: list[User]
+    incoming: list[tuple[FriendRequest, User]]
+    outgoing: list[tuple[FriendRequest, User]]
+    as_of: datetime
 
 
 def create_friend_request(
@@ -220,6 +230,21 @@ def list_friends(session: Session, *, user_id: UUID) -> list[User]:
             .where(Friendship.user_id == user_id)
             .order_by(User.username)
         ).all()
+    )
+
+
+def get_friends_overview(
+    session: Session,
+    *,
+    user_id: UUID,
+) -> FriendsOverviewResult:
+    friends = list_friends(session, user_id=user_id)
+    incoming, outgoing = list_friend_requests(session, user_id=user_id)
+    return FriendsOverviewResult(
+        friends=friends,
+        incoming=incoming,
+        outgoing=outgoing,
+        as_of=datetime.now(UTC),
     )
 
 
