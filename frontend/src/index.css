@@ -514,6 +514,38 @@ button:disabled {
   box-shadow: 0 30px 80px rgb(0 0 0 / 0.22);
 }
 
+.shared-profile-card {
+  @apply relative overflow-hidden rounded-[2rem] border border-white/9 bg-slate-900/70 p-6 shadow-2xl shadow-black/30 sm:p-10;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(249 115 22 / 0.11), transparent 18rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.025), transparent 50%),
+    rgb(15 23 42 / 0.76);
+  box-shadow:
+    0 32px 90px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 rgb(255 255 255 / 0.045);
+}
+
+.shared-profile-grid {
+  @apply pointer-events-none absolute inset-0 opacity-20;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, black, transparent 65%);
+}
+
+.shared-profile-detail {
+  @apply flex min-w-0 flex-col items-center rounded-xl border border-white/7 bg-slate-950/40 p-4 text-slate-600;
+}
+
+.shared-profile-detail span {
+  @apply mt-2 text-[0.6rem] font-extrabold uppercase tracking-[0.13em] text-slate-600;
+}
+
+.shared-profile-detail strong {
+  @apply mt-1 max-w-full truncate text-xs font-bold text-slate-200;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Award, CalendarDays, Code2, Settings, Target, Zap } from "lucide-react";
+import { Award, CalendarDays, Check, Code2, Settings, Share2, Target, Zap } from "lucide-react";
 import { Link } from "react-router";
 
 import { ApiError, getActivity, getFriends, getScores } from "../lib/api";
@@ -42,6 +42,7 @@ export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [friendsFailed, setFriendsFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -109,6 +110,24 @@ export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
     scores?.as_of,
   );
 
+  async function shareProfile() {
+    const url = `${window.location.origin}/u/${profile.username}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ url });
+        setShareNotice("Profile shared.");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareNotice("Profile link copied.");
+      }
+      window.setTimeout(() => setShareNotice(null), 2_500);
+    } catch (caughtError) {
+      if (!(caughtError instanceof Error && caughtError.name === "AbortError")) {
+        setShareNotice("Could not share the profile link.");
+      }
+    }
+  }
+
   return (
     <main className="page-container">
       <section className="panel panel-accent flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
@@ -130,7 +149,17 @@ export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
             </span>
           </div>
         </div>
-        <SyncStatus profile={profile} />
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="secondary-button px-3 py-2" type="button" onClick={() => void shareProfile()}>
+            {shareNotice === "Profile link copied." || shareNotice === "Profile shared." ? (
+              <Check aria-hidden="true" size={15} />
+            ) : (
+              <Share2 aria-hidden="true" size={15} />
+            )}
+            {shareNotice ?? "Share profile"}
+          </button>
+          <SyncStatus profile={profile} />
+        </div>
       </section>
 
       {error && <div className="error-banner mt-4">{error}</div>}

@@ -10,9 +10,14 @@ type AuthMode = "login" | "signup" | "forgot";
 interface AuthFormProps {
   initialMode?: Exclude<AuthMode, "forgot">;
   initialNotice?: string | null;
+  returnTo?: string | null;
 }
 
-export function AuthForm({ initialMode = "login", initialNotice = null }: AuthFormProps) {
+export function AuthForm({
+  initialMode = "login",
+  initialNotice = null,
+  returnTo = null,
+}: AuthFormProps) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
@@ -38,7 +43,9 @@ export function AuthForm({ initialMode = "login", initialNotice = null }: AuthFo
 
     if (mode === "forgot") {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/reset-password${
+          returnTo ? `?next=${encodeURIComponent(returnTo)}` : ""
+        }`,
       });
       if (resetError) {
         setError(resetError.message);
@@ -59,7 +66,9 @@ export function AuthForm({ initialMode = "login", initialNotice = null }: AuthFo
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin },
+        options: {
+          emailRedirectTo: `${window.location.origin}${returnTo ?? "/"}`,
+        },
       });
       if (signUpError) {
         setError(signUpError.message);

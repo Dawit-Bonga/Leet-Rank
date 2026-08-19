@@ -164,6 +164,15 @@ class PublicUserSummary(BaseModel):
     display_name: str
 
 
+class SharedProfileResponse(BaseModel):
+    id: UUID
+    username: str
+    display_name: str
+    leetcode_username: str
+    weekly_problem_goal: int
+    joined_at: datetime
+
+
 class FriendRequestItem(BaseModel):
     id: UUID
     user: PublicUserSummary

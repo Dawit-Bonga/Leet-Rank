@@ -71,6 +71,15 @@ export interface PublicUserSummary {
   display_name: string;
 }
 
+export interface SharedProfile {
+  id: string;
+  username: string;
+  display_name: string;
+  leetcode_username: string;
+  weekly_problem_goal: number;
+  joined_at: string;
+}
+
 export interface FriendRequestItem {
   id: string;
   user: PublicUserSummary;

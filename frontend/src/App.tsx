@@ -1,4 +1,4 @@
-import { lazy, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes } from "react-router";
 
@@ -28,6 +28,21 @@ const ProfilePage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./components/SettingsPage").then((module) => ({ default: module.SettingsPage })),
 );
+const SharedProfilePage = lazy(() =>
+  import("./components/SharedProfilePage").then((module) => ({
+    default: module.SharedProfilePage,
+  })),
+);
+const AuthenticatedSharedProfilePage = lazy(() =>
+  import("./components/SharedProfilePage").then((module) => ({
+    default: module.AuthenticatedSharedProfilePage,
+  })),
+);
+
+function getSafeSharedReturnPath(): string | null {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && /^\/u\/[A-Za-z0-9][A-Za-z0-9_]{2,29}$/.test(next) ? next : null;
+}
 
 function FullPageLoading({ backendStarting = false }: { backendStarting?: boolean }) {
   return (
@@ -64,6 +79,7 @@ export default function App() {
   const recoveryParameters = new URLSearchParams(window.location.hash.slice(1));
   const recoveryError =
     recoveryParameters.get("error_description")?.replaceAll("+", " ") ?? null;
+  const sharedReturnPath = getSafeSharedReturnPath();
 
   useEffect(() => {
     void warmBackend();
@@ -129,7 +145,11 @@ export default function App() {
       setAuthNotice(null);
       throw error;
     }
-    window.history.replaceState({}, "", "/sign-in");
+    window.history.replaceState(
+      {},
+      "",
+      `/sign-in${sharedReturnPath ? `?next=${encodeURIComponent(sharedReturnPath)}` : ""}`,
+    );
     setPasswordRecoveryActive(false);
   }
 
@@ -153,10 +173,27 @@ export default function App() {
       <Routes>
         <Route index element={<LandingPage />} />
         <Route
-          path="sign-in"
-          element={<AuthForm initialMode="login" initialNotice={authNotice} />}
+          path="u/:username"
+          element={
+            <Suspense fallback={<FullPageLoading />}>
+              <SharedProfilePage standalone />
+            </Suspense>
+          }
         />
-        <Route path="sign-up" element={<AuthForm initialMode="signup" />} />
+        <Route
+          path="sign-in"
+          element={
+            <AuthForm
+              initialMode="login"
+              initialNotice={authNotice}
+              returnTo={sharedReturnPath}
+            />
+          }
+        />
+        <Route
+          path="sign-up"
+          element={<AuthForm initialMode="signup" returnTo={sharedReturnPath} />}
+        />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
     );
@@ -231,6 +268,23 @@ export default function App() {
                 onSaved={loadAccount}
               />
             }
+          />
+          <Route
+            path="u/:username"
+            element={
+              <AuthenticatedSharedProfilePage
+                accessToken={session.access_token}
+                currentProfile={account.profile}
+              />
+            }
+          />
+          <Route
+            path="sign-in"
+            element={<Navigate replace to={sharedReturnPath ?? "/"} />}
+          />
+          <Route
+            path="sign-up"
+            element={<Navigate replace to={sharedReturnPath ?? "/"} />}
           />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.friends import router as friends_router
+from app.routes.public_profiles import router as public_profiles_router
 from app.routes.users import router as users_router
 
 
@@ -27,6 +28,7 @@ app.add_middleware(
 )
 app.include_router(users_router)
 app.include_router(friends_router)
+app.include_router(public_profiles_router)
 
 
 @app.get("/health", tags=["health"])

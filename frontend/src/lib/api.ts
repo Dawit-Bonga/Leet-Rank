@@ -10,6 +10,7 @@ import type {
   LeaderboardResponse,
   OnboardingPayload,
   PublicUserSummary,
+  SharedProfile,
   ScoresResponse,
   UserProfile,
   UserSettingsPayload,
@@ -74,7 +75,7 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  accessToken: string,
+  accessToken?: string,
   init: RequestInit = {},
 ): Promise<T> {
   const controller = new AbortController();
@@ -85,7 +86,7 @@ async function request<T>(
       ...init,
       signal: init.signal ?? controller.signal,
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(init.body ? { "Content-Type": "application/json" } : {}),
         ...init.headers,
       },
@@ -143,6 +144,10 @@ export async function warmBackend(): Promise<void> {
 
 export function getCurrentUser(accessToken: string): Promise<CurrentUser> {
   return request("/users/me", accessToken);
+}
+
+export function getSharedProfile(username: string): Promise<SharedProfile> {
+  return request(`/users/public/${encodeURIComponent(username)}`);
 }
 
 export function completeOnboarding(
