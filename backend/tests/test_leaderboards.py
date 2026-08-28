@@ -46,6 +46,8 @@ def add_score(
     submission = Submission(
         user_id=user.id,
         problem_id=problem.id,
+        provider="leetcode",
+        provider_submission_id=external_id,
         external_submission_id=external_id,
         submitted_at=earned_at,
     )

@@ -52,6 +52,7 @@ def test_updates_only_requested_profile_settings():
         assert updated.leetcode_experience == "INTERMEDIATE"
         assert updated.username == "alice"
         assert updated.leetcode_username == "alice-lc"
+        assert updated.submission_source == "leetcode"
 
 
 def test_rejects_blank_display_name_and_missing_user():
@@ -66,3 +67,26 @@ def test_rejects_blank_display_name_and_missing_user():
                 user_id=uuid4(),
                 weekly_problem_goal=10,
             )
+
+
+def test_neetcode_source_requires_repo_configuration():
+    with make_session() as session:
+        user = add_user(session)
+
+        with pytest.raises(InvalidSettingsError):
+            update_user_settings(
+                session,
+                user_id=user.id,
+                submission_source="github_neetcode",
+            )
+
+        updated = update_user_settings(
+            session,
+            user_id=user.id,
+            submission_source="github_neetcode",
+            neetcode_repo_owner="Dawit-Bonga",
+            neetcode_repo_name="neetcode-submissions",
+        )
+        assert updated.submission_source == "github_neetcode"
+        assert updated.neetcode_repo_owner == "Dawit-Bonga"
+        assert updated.neetcode_repo_name == "neetcode-submissions"

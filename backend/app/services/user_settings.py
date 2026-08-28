@@ -23,6 +23,9 @@ def update_user_settings(
     primary_goal: str | None = None,
     leetcode_experience: str | None = None,
     weekly_problem_goal: int | None = None,
+    submission_source: str | None = None,
+    neetcode_repo_owner: str | None = None,
+    neetcode_repo_name: str | None = None,
 ) -> User:
     user = session.get(User, user_id)
     if user is None:
@@ -39,6 +42,23 @@ def update_user_settings(
         user.leetcode_experience = leetcode_experience
     if weekly_problem_goal is not None:
         user.weekly_problem_goal = weekly_problem_goal
+    if neetcode_repo_owner is not None:
+        user.neetcode_repo_owner = neetcode_repo_owner.strip()
+    if neetcode_repo_name is not None:
+        user.neetcode_repo_name = neetcode_repo_name.strip()
+    if submission_source is not None:
+        user.submission_source = submission_source
+
+    if (user.neetcode_repo_owner is None) != (user.neetcode_repo_name is None):
+        raise InvalidSettingsError(
+            "NeetCode repository owner and name must be provided together."
+        )
+    if user.submission_source == "github_neetcode" and (
+        user.neetcode_repo_owner is None or user.neetcode_repo_name is None
+    ):
+        raise InvalidSettingsError(
+            "NeetCode repository owner and name are required for github_neetcode source."
+        )
 
     session.commit()
     session.refresh(user)

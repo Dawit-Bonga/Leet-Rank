@@ -22,6 +22,8 @@ def add_scored_event(session, user, problem, *, external_id, earned_at, points, 
     submission = Submission(
         user_id=user.id,
         problem_id=problem.id,
+        provider="leetcode",
+        provider_submission_id=external_id,
         external_submission_id=external_id,
         submitted_at=earned_at,
     )

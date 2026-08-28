@@ -38,6 +38,11 @@ class LeetCodeExperience(StrEnum):
     ADVANCED = "ADVANCED"
 
 
+class SubmissionSource(StrEnum):
+    LEETCODE = "leetcode"
+    GITHUB_NEETCODE = "github_neetcode"
+
+
 class UserOnboardingRequest(BaseModel):
     username: str = Field(
         min_length=3,
@@ -79,6 +84,9 @@ class UserSettingsUpdate(BaseModel):
     primary_goal: PrimaryGoal | None = None
     leetcode_experience: LeetCodeExperience | None = None
     weekly_problem_goal: int | None = Field(default=None, ge=1, le=100)
+    submission_source: SubmissionSource | None = None
+    neetcode_repo_owner: str | None = Field(default=None, min_length=1, max_length=100)
+    neetcode_repo_name: str | None = Field(default=None, min_length=1, max_length=100)
 
     @field_validator("display_name")
     @classmethod
@@ -90,6 +98,16 @@ class UserSettingsUpdate(BaseModel):
             raise ValueError("Display name cannot be empty.")
         return normalized
 
+    @field_validator("neetcode_repo_owner", "neetcode_repo_name")
+    @classmethod
+    def normalize_repo_value(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Repository fields cannot be blank.")
+        return normalized
+
     @model_validator(mode="after")
     def require_change(self) -> "UserSettingsUpdate":
         if all(
@@ -99,6 +117,9 @@ class UserSettingsUpdate(BaseModel):
                 self.primary_goal,
                 self.leetcode_experience,
                 self.weekly_problem_goal,
+                self.submission_source,
+                self.neetcode_repo_owner,
+                self.neetcode_repo_name,
             )
         ):
             raise ValueError("At least one setting must be provided.")
@@ -110,6 +131,9 @@ class UserSettingsResponse(BaseModel):
     primary_goal: PrimaryGoal
     leetcode_experience: LeetCodeExperience
     weekly_problem_goal: int
+    submission_source: SubmissionSource
+    neetcode_repo_owner: str | None
+    neetcode_repo_name: str | None
 
 
 class PeriodScore(BaseModel):
