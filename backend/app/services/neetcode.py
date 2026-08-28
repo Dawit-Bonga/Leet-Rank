@@ -27,7 +27,7 @@ class GitHubNeetCodeClient:
         resolved_token = token or os.getenv("GITHUB_TOKEN")
         headers = {
             "Accept": "application/vnd.github+json",
-            "User-Agent": "LeetRank/0.1",
+            "User-Agent": "LeetClimb/0.1",
             "X-GitHub-Api-Version": "2022-11-28",
         }
         if resolved_token:

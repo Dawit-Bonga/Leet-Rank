@@ -79,7 +79,7 @@ export function SharedProfilePage({
         setError(
           caughtError instanceof ApiError
             ? caughtError.message
-            : "Could not load this LeetRank profile.",
+            : "Could not load this LeetClimb profile.",
         );
       })
       .finally(() => {
@@ -136,10 +136,10 @@ export function SharedProfilePage({
       <span className="icon-chip mx-auto"><UsersRound aria-hidden="true" size={18} /></span>
       <h1 className="mt-5 text-2xl font-black text-white">Profile not found</h1>
       <p className="mt-2 text-sm leading-6 text-slate-400">
-        {error ?? "This shared LeetRank profile is unavailable."}
+        {error ?? "This shared LeetClimb profile is unavailable."}
       </p>
       <Link className="secondary-button mt-6" to={accessToken ? "/" : "/"}>
-        <ArrowLeft aria-hidden="true" size={15} /> Back to LeetRank
+        <ArrowLeft aria-hidden="true" size={15} /> Back to LeetClimb
       </Link>
     </section>
   ) : (

@@ -88,7 +88,7 @@ export function OnboardingForm({
           <div className="max-w-2xl">
             <p className="eyebrow">One last step</p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-white">
-              Make LeetRank yours.
+              Make LeetClimb yours.
             </h1>
             <p className="mt-3 leading-7 text-slate-400">
               Connect your LeetCode profile and tell us what you’re working toward. Scoring
@@ -111,7 +111,7 @@ export function OnboardingForm({
                 />
               </label>
               <label>
-                <span className="field-label">LeetRank username</span>
+                <span className="field-label">LeetClimb username</span>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">@</span>
                   <input

@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./leetrank.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./leetclimb.db")
 
 
 class Base(DeclarativeBase):

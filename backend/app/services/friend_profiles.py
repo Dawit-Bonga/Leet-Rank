@@ -41,7 +41,7 @@ def get_friend_profile(
     friend = session.get(User, friend_id) if friendship is not None else None
     if friend is None or friendship is None:
         # Use the same response for missing users and non-friends so this endpoint
-        # cannot be used to discover private LeetRank accounts.
+        # cannot be used to discover private LeetClimb accounts.
         raise FriendProfileNotFoundError("Friend profile does not exist.")
 
     calculated_at = as_of or datetime.now(UTC)

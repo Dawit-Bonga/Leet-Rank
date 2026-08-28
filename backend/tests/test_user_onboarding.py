@@ -174,7 +174,7 @@ def test_duplicate_leetcode_username_is_rejected_without_second_provider_call(on
     assert session.scalar(select(func.count()).select_from(User)) == 1
 
 
-def test_duplicate_leetrank_username_is_rejected_without_provider_call(onboarding_client):
+def test_duplicate_leetclimb_username_is_rejected_without_provider_call(onboarding_client):
     client, session, provider = onboarding_client
     assert client.post("/users/me/onboarding", json=onboarding_payload()).status_code == 201
     provider.auth_user_id = uuid4()

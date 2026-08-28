@@ -144,7 +144,7 @@ def sync_user_neetcode_submissions(
 ) -> NeetCodeSyncResult:
     user = session.get(User, user_id)
     if user is None:
-        raise SyncUserNotFoundError("LeetRank user does not exist.")
+        raise SyncUserNotFoundError("LeetClimb user does not exist.")
     if not user.neetcode_repo_owner or not user.neetcode_repo_name:
         raise NeetCodeIntegrationNotConfiguredError("NeetCode repository is not configured.")
 

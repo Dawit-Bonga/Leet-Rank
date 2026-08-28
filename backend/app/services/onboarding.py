@@ -20,7 +20,7 @@ class LeetCodeUsernameTakenError(Exception):
     pass
 
 
-class LeetRankUsernameTakenError(Exception):
+class LeetClimbUsernameTakenError(Exception):
     pass
 
 
@@ -46,7 +46,7 @@ def create_onboarded_user(
     )
     if existing_profile is not None:
         raise AuthUserAlreadyOnboardedError(
-            "This authenticated account already has a LeetRank profile."
+            "This authenticated account already has a LeetClimb profile."
         )
 
     normalized_username = username.strip().lower()
@@ -54,7 +54,7 @@ def create_onboarded_user(
         select(User).where(User.username == normalized_username)
     )
     if username_duplicate is not None:
-        raise LeetRankUsernameTakenError("That LeetRank username is already taken.")
+        raise LeetClimbUsernameTakenError("That LeetClimb username is already taken.")
 
     normalized_input = leetcode_username.strip().lower()
     if not normalized_input:
@@ -64,7 +64,7 @@ def create_onboarded_user(
         select(User).where(func.lower(User.leetcode_username) == normalized_input)
     )
     if duplicate is not None:
-        raise LeetCodeUsernameTakenError("That LeetCode account is already connected to LeetRank.")
+        raise LeetCodeUsernameTakenError("That LeetCode account is already connected to LeetClimb.")
 
     leetcode_user = provider.get_user(normalized_input)
     canonical_username = leetcode_user.username.strip().lower()
@@ -75,7 +75,7 @@ def create_onboarded_user(
         select(User).where(func.lower(User.leetcode_username) == canonical_username)
     )
     if duplicate is not None:
-        raise LeetCodeUsernameTakenError("That LeetCode account is already connected to LeetRank.")
+        raise LeetCodeUsernameTakenError("That LeetCode account is already connected to LeetClimb.")
 
     scoring_start = now or datetime.now(UTC)
     if scoring_start.tzinfo is None:
@@ -104,12 +104,12 @@ def create_onboarded_user(
         session.rollback()
         if session.scalar(select(User).where(User.auth_user_id == auth_user_id)) is not None:
             raise AuthUserAlreadyOnboardedError(
-                "This authenticated account already has a LeetRank profile."
+                "This authenticated account already has a LeetClimb profile."
             ) from exc
         if session.scalar(select(User).where(User.username == normalized_username)) is not None:
-            raise LeetRankUsernameTakenError("That LeetRank username is already taken.") from exc
+            raise LeetClimbUsernameTakenError("That LeetClimb username is already taken.") from exc
         raise LeetCodeUsernameTakenError(
-            "That LeetCode account is already connected to LeetRank."
+            "That LeetCode account is already connected to LeetClimb."
         ) from exc
 
     session.refresh(user)

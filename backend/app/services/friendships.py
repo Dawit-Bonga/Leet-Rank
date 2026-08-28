@@ -67,7 +67,7 @@ def create_friend_request(
     normalized_username = target_username.strip().lower()
     target = session.scalar(select(User).where(User.username == normalized_username))
     if target is None:
-        raise FriendshipUserNotFoundError("No LeetRank user has that username.")
+        raise FriendshipUserNotFoundError("No LeetClimb user has that username.")
     if target.id == requester.id:
         raise CannotFriendSelfError("You cannot send a friend request to yourself.")
 

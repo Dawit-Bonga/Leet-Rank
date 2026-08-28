@@ -98,7 +98,7 @@ class LeetCodeGraphQLClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
                 "Referer": "https://leetcode.com/",
-                "User-Agent": "LeetRank/0.1",
+                "User-Agent": "LeetClimb/0.1",
             },
         )
 

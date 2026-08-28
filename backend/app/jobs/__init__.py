@@ -1,1 +1,1 @@
-"""Runnable maintenance jobs for LeetRank."""
+"""Runnable maintenance jobs for LeetClimb."""

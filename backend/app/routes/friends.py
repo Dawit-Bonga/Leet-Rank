@@ -64,7 +64,7 @@ def _summary(user) -> PublicUserSummary:
     response_model=UserSearchResponse,
     responses={404: {"model": ErrorResponse}},
 )
-def search_leetrank_users(
+def search_leetclimb_users(
     username: str = Query(
         min_length=3,
         max_length=30,

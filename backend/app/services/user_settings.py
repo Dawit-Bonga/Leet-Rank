@@ -29,7 +29,7 @@ def update_user_settings(
 ) -> User:
     user = session.get(User, user_id)
     if user is None:
-        raise SettingsUserNotFoundError("LeetRank user does not exist.")
+        raise SettingsUserNotFoundError("LeetClimb user does not exist.")
 
     if display_name is not None:
         normalized_display_name = display_name.strip()

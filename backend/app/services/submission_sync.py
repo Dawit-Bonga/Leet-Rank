@@ -62,7 +62,7 @@ def ingest_submission(
 ) -> IngestionResult:
     user = session.get(User, user_id)
     if user is None:
-        raise SyncUserNotFoundError("LeetRank user does not exist.")
+        raise SyncUserNotFoundError("LeetClimb user does not exist.")
 
     submitted_at = _as_utc(submission.submitted_at)
     if submitted_at < _as_utc(user.scoring_started_at):
@@ -146,7 +146,7 @@ def sync_user_submissions(
 ) -> SyncResult:
     user = session.get(User, user_id)
     if user is None:
-        raise SyncUserNotFoundError("LeetRank user does not exist.")
+        raise SyncUserNotFoundError("LeetClimb user does not exist.")
     provider_name = getattr(provider, "provider_name", "leetcode")
 
     sync_state = session.get(UserSyncState, user_id)

@@ -59,7 +59,7 @@ export function AppShell({ profile, onSignOut }: AppShellProps) {
     <div className="app-background min-h-screen text-white">
       <header className="sticky top-0 z-30 border-b border-white/6 bg-[#030712]/86 px-5 py-3.5 backdrop-blur-xl sm:px-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6">
-          <NavLink aria-label="LeetRank dashboard" className="rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-400/15" to="/">
+          <NavLink aria-label="LeetClimb dashboard" className="rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-400/15" to="/">
             <Brand compact />
           </NavLink>
 

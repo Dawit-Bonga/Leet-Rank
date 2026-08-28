@@ -1,6 +1,6 @@
-# LeetRank
+# LeetClimb
 
-LeetRank turns accepted LeetCode submissions into points on a private friends
+LeetClimb turns accepted LeetCode submissions into points on a private friends
 leaderboard.
 
 ## Local development

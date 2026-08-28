@@ -228,7 +228,7 @@ export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
               <span className="ml-1 text-sm text-slate-500">pts</span>
             </p>
           )}
-          <p className="mt-3 text-xs text-slate-500">Since joining LeetRank</p>
+          <p className="mt-3 text-xs text-slate-500">Since joining LeetClimb</p>
         </div>
       </section>
 

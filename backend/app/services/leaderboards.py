@@ -46,7 +46,7 @@ def get_friends_leaderboard(
     as_of: datetime | None = None,
 ) -> LeaderboardResult:
     if session.get(User, user_id) is None:
-        raise LeaderboardUserNotFoundError("LeetRank user does not exist.")
+        raise LeaderboardUserNotFoundError("LeetClimb user does not exist.")
 
     calculated_at = _as_utc(as_of or datetime.now(UTC))
     starts_at = {

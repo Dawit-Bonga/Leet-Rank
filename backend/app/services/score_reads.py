@@ -62,7 +62,7 @@ def get_user_scores(
 ) -> UserScoresResult:
     user = session.get(User, user_id)
     if user is None:
-        raise ScoreUserNotFoundError("LeetRank user does not exist.")
+        raise ScoreUserNotFoundError("LeetClimb user does not exist.")
 
     calculated_at = _as_utc(as_of or datetime.now(UTC))
     week_start = calculated_at - timedelta(days=7)
@@ -126,7 +126,7 @@ def get_user_activity(
     offset: int = 0,
 ) -> UserActivityResult:
     if session.get(User, user_id) is None:
-        raise ScoreUserNotFoundError("LeetRank user does not exist.")
+        raise ScoreUserNotFoundError("LeetClimb user does not exist.")
 
     rows = session.execute(
         select(ScoreEvent, Problem)

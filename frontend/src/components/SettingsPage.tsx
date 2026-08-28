@@ -110,7 +110,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
         <p className="eyebrow">Your account</p>
         <h1 className="page-title mt-2">Settings</h1>
         <p className="page-description">
-          Update how LeetRank personalizes your goals and displays your profile.
+          Update how LeetClimb personalizes your goals and displays your profile.
         </p>
       </section>
 
@@ -123,7 +123,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
               </span>
               <div>
                 <h2 className="section-heading">Profile preferences</h2>
-                <p className="section-kicker">These changes appear across LeetRank</p>
+                <p className="section-kicker">These changes appear across LeetClimb</p>
               </div>
             </div>
           </div>
@@ -309,7 +309,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
           <dl className="mt-5 space-y-4">
             <div>
               <dt className="text-[0.65rem] font-extrabold uppercase tracking-wider text-slate-600">
-                LeetRank username
+                LeetClimb username
               </dt>
               <dd className="mt-1 text-sm font-bold text-slate-200">@{profile.username}</dd>
             </div>

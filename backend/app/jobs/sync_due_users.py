@@ -55,7 +55,7 @@ def _wake_backend(
             timeout=timeout_seconds,
             transport=transport,
             follow_redirects=True,
-            headers={"User-Agent": "LeetRank-Sync/0.1"},
+            headers={"User-Agent": "LeetClimb-Sync/0.1"},
         ) as client:
             response = client.get(url)
             response.raise_for_status()

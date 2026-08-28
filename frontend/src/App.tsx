@@ -51,7 +51,7 @@ function FullPageLoading({ backendStarting = false }: { backendStarting?: boolea
         <div className="mx-auto mb-5 size-10 animate-spin rounded-full border-2 border-slate-700 border-t-orange-400" />
         <Brand />
         <p className="mt-4 text-sm text-slate-500">
-          {backendStarting ? "Starting LeetRank…" : "Loading your account…"}
+          {backendStarting ? "Starting LeetClimb…" : "Loading your account…"}
         </p>
         {backendStarting && (
           <p className="mt-2 text-xs text-slate-600">
@@ -118,7 +118,7 @@ export default function App() {
         setAccountError(
           caughtError instanceof ApiError
             ? caughtError.message
-            : "Could not load your LeetRank account.",
+            : "Could not load your LeetClimb account.",
         );
       }
     } finally {

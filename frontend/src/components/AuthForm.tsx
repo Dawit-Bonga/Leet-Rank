@@ -127,7 +127,7 @@ export function AuthForm({
           </p>
           <h2 className="mt-3 text-4xl font-black tracking-tight text-white">
             {mode === "login"
-              ? "Sign in to LeetRank"
+              ? "Sign in to LeetClimb"
               : mode === "signup"
                 ? "Create your account"
                 : "Reset your password"}
@@ -206,7 +206,7 @@ export function AuthForm({
             </button>
           ) : (
             <p className="mt-7 text-center text-sm text-slate-400">
-              {mode === "login" ? "New to LeetRank?" : "Already have an account?"}{" "}
+              {mode === "login" ? "New to LeetClimb?" : "Already have an account?"}{" "}
               <button
                 className="font-semibold text-orange-400 transition hover:text-orange-300"
                 type="button"
@@ -220,7 +220,7 @@ export function AuthForm({
             className="mx-auto mt-5 flex w-fit items-center gap-2 text-xs font-bold text-slate-600 transition hover:text-slate-300"
             to="/"
           >
-            <ArrowLeft aria-hidden="true" size={13} /> Back to LeetRank
+            <ArrowLeft aria-hidden="true" size={13} /> Back to LeetClimb
           </Link>
         </div>
       </section>

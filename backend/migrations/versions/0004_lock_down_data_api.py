@@ -1,4 +1,4 @@
-"""Lock LeetRank tables behind the FastAPI data-access boundary."""
+"""Lock LeetClimb tables behind the FastAPI data-access boundary."""
 
 from collections.abc import Sequence
 

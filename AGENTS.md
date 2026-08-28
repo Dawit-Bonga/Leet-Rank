@@ -1,6 +1,6 @@
 # Project
 
-LeetRank is a competitive LeetCode accountability app where users
+LeetClimb is a competitive LeetCode accountability app where users
 earn points from accepted LeetCode submissions and compete with friends.
 
 ## Stack

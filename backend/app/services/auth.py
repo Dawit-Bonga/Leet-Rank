@@ -41,7 +41,7 @@ class SupabaseAuthClient:
             headers={
                 "Accept": "application/json",
                 "apikey": publishable_key,
-                "User-Agent": "LeetRank/0.1",
+                "User-Agent": "LeetClimb/0.1",
             },
         )
 

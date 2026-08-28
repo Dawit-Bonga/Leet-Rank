@@ -3,11 +3,11 @@
 ## V1 scoring eligibility
 
 - A user's scoring window starts when their LeetCode username is successfully
-  connected to LeetRank.
+  connected to LeetClimb.
 - Accepted submissions before `scoring_started_at` are ignored and are not
   stored.
-- Previous LeetCode solves do not affect LeetRank. The first eligible solve of
-  a problem is the user's first LeetRank solve.
+- Previous LeetCode solves do not affect LeetClimb. The first eligible solve of
+  a problem is the user's first LeetClimb solve.
 - Submission time, rather than synchronization time, determines when points
   were earned.
 - All timestamps are stored and compared in UTC.
@@ -31,7 +31,7 @@
 
 - `week` is a rolling seven-day window.
 - `month` is a rolling thirty-day window.
-- `all` contains every LeetRank score event since signup.
+- `all` contains every LeetClimb score event since signup.
 - Leaderboards aggregate stored score events and never recalculate scores.
 - Personal score responses return all three totals with a server-generated
   `as_of` timestamp and the start of each period.
@@ -59,7 +59,7 @@
   uses their real LeetCode submission IDs for deduplication.
 - One user's failure does not stop the remaining batch. A `RUNNING` state older
   than 30 minutes is treated as abandoned and recovered by the next job.
-- LeetRank tables are not a browser-facing Supabase Data API. Row Level
+- LeetClimb tables are not a browser-facing Supabase Data API. Row Level
   Security is enabled without client policies, and the `anon` and
   `authenticated` roles have no direct table privileges. All application data
   access goes through FastAPI.
@@ -67,7 +67,7 @@
 ## V1 authentication
 
 - Supabase Auth owns signup, login, email confirmation, sessions, and access
-  tokens. LeetRank does not store passwords.
+  tokens. LeetClimb does not store passwords.
 - Password recovery stays entirely within Supabase Auth. Reset links return to
   the public frontend `/reset-password` route, and the recovery session is
   signed out after the password is changed.
@@ -75,13 +75,13 @@
   before trusting its user ID.
 - The verified Supabase user ID maps to the unique `users.auth_user_id` column.
 - User-owned operations use `/users/me`; the caller cannot choose the acting
-  user by putting a LeetRank user ID in the URL.
+  user by putting a LeetClimb user ID in the URL.
 - An authenticated account without a linked profile may only complete
   onboarding. Other private endpoints return `onboarding_required`.
 - `GET /users/me` is the frontend session-bootstrap endpoint. It returns
   `profile: null` with HTTP 200 when the authenticated account still needs
-  onboarding, and the full LeetRank profile after onboarding.
-- The public LeetCode submissions lookup remains independent of LeetRank
+  onboarding, and the full LeetClimb profile after onboarding.
+- The public LeetCode submissions lookup remains independent of LeetClimb
   identity because it only reads public LeetCode data.
 
 ## V1 onboarding
@@ -90,18 +90,18 @@
 - Onboarding records one primary goal, experience level, and weekly problem
   goal. These fields personalize the product but do not change scoring.
 - A validated username is normalized to lowercase and can belong to only one
-  LeetRank user.
+  LeetClimb user.
 - Username validation proves that the LeetCode account exists, not that the
-  LeetRank user owns it. Ownership verification is deferred beyond V1.
+  LeetClimb user owns it. Ownership verification is deferred beyond V1.
 - Onboarding uses authenticated `POST /users/me/onboarding` and permanently
   links the new profile to that Supabase Auth account.
 
 ## V1 friendships
 
-- Every user chooses a unique LeetRank username during onboarding. Usernames
+- Every user chooses a unique LeetClimb username during onboarding. Usernames
   are case-insensitive and stored in lowercase.
-- Friend requests use exact LeetRank usernames, not LeetCode or LinkedIn names.
-- Authenticated users can search by LeetRank username prefix. Results are
+- Friend requests use exact LeetClimb usernames, not LeetCode or LinkedIn names.
+- Authenticated users can search by LeetClimb username prefix. Results are
   limited to ten public summaries and include relationship state so the
   frontend never needs to guess whether a request can be sent.
 - A friendship exists only after the recipient accepts the request.
@@ -121,7 +121,7 @@
 
 - Users can update their display name, primary goal, experience level, and
   weekly problem goal.
-- LeetRank usernames remain stable because friends use them for discovery.
+- LeetClimb usernames remain stable because friends use them for discovery.
 - Connected LeetCode usernames remain stable because they define scoring
   identity and history. Reconnection requires a separate future workflow.
 - Email and password changes remain owned by Supabase Auth.

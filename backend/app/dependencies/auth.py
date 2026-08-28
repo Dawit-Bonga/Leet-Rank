@@ -80,7 +80,7 @@ def get_current_user(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "code": "onboarding_required",
-                "message": "Complete LeetRank onboarding before using this endpoint.",
+                "message": "Complete LeetClimb onboarding before using this endpoint.",
             },
         )
     return user

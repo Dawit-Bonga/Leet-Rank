@@ -177,7 +177,7 @@ export function FriendProfilePage({ accessToken }: FriendProfilePageProps) {
           <p className="metric-value">
             {profile.scores.all_time.points}<span className="ml-1 text-sm text-slate-500">pts</span>
           </p>
-          <p className="mt-1 text-xs text-slate-500">Since joining LeetRank</p>
+          <p className="mt-1 text-xs text-slate-500">Since joining LeetClimb</p>
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-"""Add LeetRank usernames and pending friend requests."""
+"""Add LeetClimb usernames and pending friend requests."""
 
 from collections.abc import Sequence
 

@@ -175,7 +175,7 @@ export function LandingPage() {
       <section className="landing-section" id="how-it-works">
         <div className="landing-section-heading">
           <p className="eyebrow">Simple by design</p>
-          <h2>Practice as usual. LeetRank handles the competition.</h2>
+          <h2>Practice as usual. LeetClimb handles the competition.</h2>
           <p>No new routine to manage—just a clearer reason to keep showing up.</p>
         </div>
         <div className="mt-12 grid gap-4 md:grid-cols-3">
@@ -199,14 +199,14 @@ export function LandingPage() {
             Enough competition to push you. Not enough noise to distract you.
           </h2>
           <p className="mt-5 max-w-xl text-sm leading-7 text-slate-400 sm:text-base">
-            LeetRank keeps the group intentionally small and the feedback immediate. See the
+            LeetClimb keeps the group intentionally small and the feedback immediate. See the
             score, close the gap, and celebrate the solve.
           </p>
           <div className="mt-8 space-y-3">
             {[
               [UsersRound, 'A focused leaderboard for you and your friends'],
               [Target, 'A visible weekly goal that keeps momentum honest'],
-              [ShieldCheck, 'Points count only after you join LeetRank'],
+              [ShieldCheck, 'Points count only after you join LeetClimb'],
             ].map(([Icon, text]) => {
               const FeatureIcon = Icon as typeof UsersRound;
               return (

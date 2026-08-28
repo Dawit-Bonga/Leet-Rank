@@ -48,7 +48,7 @@ function defaultErrorMessage(status: number): string {
   if (status === 401) return "Your session expired. Please sign in again.";
   if (status === 502) return "LeetCode could not be reached. Try again shortly.";
   if (status === 503 || status === 504) {
-    return "LeetRank is temporarily unavailable. Try again shortly.";
+    return "LeetClimb is temporarily unavailable. Try again shortly.";
   }
   if (status >= 500) return "Something failed on our server. Your data was not changed.";
   return `Request failed with status ${status}.`;
@@ -95,8 +95,8 @@ async function request<T>(
     const aborted = caughtError instanceof Error && caughtError.name === "AbortError";
     throw new ApiError(
       aborted
-        ? "LeetRank took too long to respond. Try again."
-        : "Could not reach LeetRank. Check your connection and try again.",
+        ? "LeetClimb took too long to respond. Try again."
+        : "Could not reach LeetClimb. Check your connection and try again.",
       0,
       aborted ? "request_timeout" : "network_unavailable",
       aborted ? "TIMEOUT" : "NETWORK",
@@ -122,7 +122,7 @@ async function request<T>(
     return (await response.json()) as T;
   } catch {
     throw new ApiError(
-      "LeetRank returned an invalid response. Try again shortly.",
+      "LeetClimb returned an invalid response. Try again shortly.",
       response.status,
       "invalid_response",
       "RESPONSE",

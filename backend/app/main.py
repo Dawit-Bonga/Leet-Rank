@@ -18,7 +18,7 @@ frontend_origins = [
 ]
 
 
-app = FastAPI(title="LeetRank API")
+app = FastAPI(title="LeetClimb API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins,

@@ -35,7 +35,7 @@ from app.services.current_account import get_current_account
 from app.services.onboarding import (
     AuthUserAlreadyOnboardedError,
     LeetCodeUsernameTakenError,
-    LeetRankUsernameTakenError,
+    LeetClimbUsernameTakenError,
     create_onboarded_user,
 )
 from app.services.score_reads import ScoreUserNotFoundError, get_user_activity, get_user_scores
@@ -194,7 +194,7 @@ def create_user(
             status_code=409,
             detail={"code": "profile_exists", "message": str(exc)},
         ) from exc
-    except LeetRankUsernameTakenError as exc:
+    except LeetClimbUsernameTakenError as exc:
         raise HTTPException(
             status_code=409,
             detail={"code": "username_taken", "message": str(exc)},

@@ -10,7 +10,7 @@ export function Brand({ compact = false }: BrandProps) {
         <span className="absolute -bottom-2 -right-2 size-6 rounded-full border-4 border-slate-950/20" />
       </div>
       <div>
-        <p className="text-lg font-black tracking-[-0.035em] text-white">LeetRank</p>
+        <p className="text-lg font-black tracking-[-0.035em] text-white">LeetClimb</p>
         {!compact && (
           <p className="text-xs font-semibold tracking-wide text-slate-500">
             Practice together. Climb together.

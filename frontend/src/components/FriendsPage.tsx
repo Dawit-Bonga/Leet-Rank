@@ -276,7 +276,7 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
             </span>
             <div>
               <h2 className="text-sm font-extrabold text-white">Add a friend</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Search by LeetRank username</p>
+              <p className="mt-0.5 text-xs text-slate-500">Search by LeetClimb username</p>
             </div>
           </div>
           <div className="relative flex-1">
@@ -286,7 +286,7 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
               size={17}
             />
             <input
-              aria-label="Search LeetRank usernames"
+              aria-label="Search LeetClimb usernames"
               className="field-input field-input-compact field-input-leading field-input-trailing"
               type="search"
               value={username}
@@ -367,7 +367,7 @@ export function FriendsPage({ accessToken }: FriendsPageProps) {
             ) : (
               <EmptyState
                 compact
-                description="Try another LeetRank username."
+                description="Try another LeetClimb username."
                 icon={Search}
                 title="No matching users"
               />
