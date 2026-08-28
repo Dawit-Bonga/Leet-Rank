@@ -9,6 +9,7 @@ import httpx
 from app.database import SessionLocal
 from app.services.automatic_sync import DEFAULT_BATCH_SIZE, sync_due_users
 from app.services.leetcode import LeetCodeGraphQLClient
+from app.services.neetcode import GitHubNeetCodeClient
 
 
 def _positive_int_from_env(name: str, default: int) -> int:
@@ -59,8 +60,17 @@ def main() -> int:
         )
 
     batch_size = _positive_int_from_env("SYNC_BATCH_SIZE", DEFAULT_BATCH_SIZE)
-    with SessionLocal() as session, LeetCodeGraphQLClient() as provider:
-        result = sync_due_users(session, provider, batch_size=batch_size)
+    with (
+        SessionLocal() as session,
+        LeetCodeGraphQLClient() as leetcode_provider,
+        GitHubNeetCodeClient() as neetcode_provider,
+    ):
+        result = sync_due_users(
+            session,
+            leetcode_provider,
+            neetcode_provider=neetcode_provider,
+            batch_size=batch_size,
+        )
 
     print(json.dumps(asdict(result), default=str, sort_keys=True))
     return 1 if result.failed else 0

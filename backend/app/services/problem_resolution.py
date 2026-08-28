@@ -5,6 +5,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Protocol
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,6 +22,10 @@ _SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 class ProblemLookupResult:
     normalized_slug: str
     problem: Problem | None
+
+
+class ProblemDetailsProvider(Protocol):
+    def get_problem(self, title_slug: str) -> ProblemDetails: ...
 
 
 def normalize_problem_slug(value: str) -> str:
@@ -73,31 +78,48 @@ def queue_unmapped_submission(
     return True
 
 
-def retry_unmapped_submissions(session: Session, *, limit: int = 100) -> int:
-    pending = list(
-        session.scalars(
-            select(UnmappedSubmission)
-            .where(UnmappedSubmission.resolved_at.is_(None))
-            .order_by(UnmappedSubmission.created_at.asc())
-            .limit(limit)
-        )
+def retry_unmapped_submissions(
+    session: Session,
+    *,
+    problem_provider: ProblemDetailsProvider | None = None,
+    limit: int = 100,
+    user_id: uuid.UUID | None = None,
+) -> int:
+    query = (
+        select(UnmappedSubmission)
+        .where(UnmappedSubmission.resolved_at.is_(None))
+        .order_by(UnmappedSubmission.created_at.asc())
     )
+    if user_id is not None:
+        query = query.where(UnmappedSubmission.user_id == user_id)
+    pending = list(session.scalars(query.limit(limit)))
     resolved_count = 0
     for item in pending:
         lookup = resolve_problem_by_slug(session, item.problem_slug)
-        if lookup.problem is None:
+        details: ProblemDetails | None = None
+        if lookup.problem is not None:
+            details = ProblemDetails(
+                slug=lookup.problem.leetcode_slug,
+                title=lookup.problem.title,
+                difficulty=lookup.problem.difficulty,
+            )
+        elif problem_provider is not None:
+            try:
+                details = problem_provider.get_problem(
+                    lookup.normalized_slug or item.problem_slug
+                )
+            except Exception as exc:
+                item.last_error = str(exc)[:500]
+                session.commit()
+                continue
+        else:
             continue
 
         submission = AcceptedSubmission(
             external_id=item.provider_submission_id,
-            problem_slug=lookup.problem.leetcode_slug,
-            problem_title=lookup.problem.title,
+            problem_slug=details.slug,
+            problem_title=details.title,
             submitted_at=item.submitted_at.astimezone(UTC),
-        )
-        details = ProblemDetails(
-            slug=lookup.problem.leetcode_slug,
-            title=lookup.problem.title,
-            difficulty=lookup.problem.difficulty,
         )
         ingest_submission(
             session,

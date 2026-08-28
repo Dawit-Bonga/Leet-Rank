@@ -69,7 +69,7 @@ def test_rejects_blank_display_name_and_missing_user():
             )
 
 
-def test_neetcode_source_requires_repo_configuration():
+def test_neetcode_repo_requires_owner_and_name_together():
     with make_session() as session:
         user = add_user(session)
 
@@ -77,16 +77,14 @@ def test_neetcode_source_requires_repo_configuration():
             update_user_settings(
                 session,
                 user_id=user.id,
-                submission_source="github_neetcode",
+                neetcode_repo_owner="Dawit-Bonga",
             )
 
         updated = update_user_settings(
             session,
             user_id=user.id,
-            submission_source="github_neetcode",
             neetcode_repo_owner="Dawit-Bonga",
             neetcode_repo_name="neetcode-submissions",
         )
-        assert updated.submission_source == "github_neetcode"
         assert updated.neetcode_repo_owner == "Dawit-Bonga"
         assert updated.neetcode_repo_name == "neetcode-submissions"

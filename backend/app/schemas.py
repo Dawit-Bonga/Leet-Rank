@@ -66,6 +66,9 @@ class UserResponse(BaseModel):
     primary_goal: PrimaryGoal
     leetcode_experience: LeetCodeExperience
     weekly_problem_goal: int
+    submission_source: SubmissionSource
+    neetcode_repo_owner: str | None
+    neetcode_repo_name: str | None
     scoring_started_at: datetime
     onboarding_completed_at: datetime
     sync_status: str

@@ -53,13 +53,6 @@ def update_user_settings(
         raise InvalidSettingsError(
             "NeetCode repository owner and name must be provided together."
         )
-    if user.submission_source == "github_neetcode" and (
-        user.neetcode_repo_owner is None or user.neetcode_repo_name is None
-    ):
-        raise InvalidSettingsError(
-            "NeetCode repository owner and name are required for github_neetcode source."
-        )
-
     session.commit()
     session.refresh(user)
     return user

@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.models import Submission, User, UserSyncState
 from app.services.leetcode import AcceptedSubmission, ProblemDetails
-from app.services.problem_resolution import queue_unmapped_submission, resolve_problem_by_slug
+from app.services.problem_resolution import (
+    ProblemDetailsProvider,
+    queue_unmapped_submission,
+    resolve_problem_by_slug,
+    retry_unmapped_submissions,
+)
 from app.services.submission_sync import IngestionResult, SyncAlreadyRunningError, SyncUserNotFoundError, ingest_submission
 
 
@@ -66,8 +71,32 @@ def _to_ingestion_result(
     *,
     user_id: uuid.UUID,
     event: NeetCodeSubmissionEvent,
+    problem_provider: ProblemDetailsProvider | None = None,
 ) -> IngestionResult | None:
     lookup = resolve_problem_by_slug(session, event.problem_slug)
+    if lookup.problem is None and problem_provider is not None:
+        try:
+            details = problem_provider.get_problem(
+                lookup.normalized_slug or event.problem_slug
+            )
+        except Exception:
+            # Fall back to non-blocking unmapped queue when metadata resolution fails.
+            pass
+        else:
+            return ingest_submission(
+                session,
+                user_id=user_id,
+                submission=AcceptedSubmission(
+                    external_id=event.provider_submission_id,
+                    problem_slug=details.slug,
+                    problem_title=details.title,
+                    submitted_at=_as_utc(event.submitted_at),
+                ),
+                problem_details=details,
+                provider=NEETCODE_PROVIDER,
+                provider_submission_id=event.provider_submission_id,
+            )
+
     if lookup.problem is None:
         queue_unmapped_submission(
             session,
@@ -109,6 +138,7 @@ def sync_user_neetcode_submissions(
     provider: NeetCodeSubmissionProvider,
     *,
     user_id: uuid.UUID,
+    problem_provider: ProblemDetailsProvider | None = None,
     limit: int = 100,
     now: datetime | None = None,
 ) -> NeetCodeSyncResult:
@@ -162,7 +192,12 @@ def sync_user_neetcode_submissions(
                 result_counts["duplicate"] += 1
                 continue
 
-            ingestion = _to_ingestion_result(session, user_id=user_id, event=event)
+            ingestion = _to_ingestion_result(
+                session,
+                user_id=user_id,
+                event=event,
+                problem_provider=problem_provider,
+            )
             if ingestion is None:
                 result_counts["unmapped"] += 1
                 continue
@@ -178,6 +213,13 @@ def sync_user_neetcode_submissions(
         sync_state.sync_status = "SUCCEEDED"
         sync_state.last_successful_at = attempted_at
         sync_state.last_error = None
+        # Retry older unmapped rows now that metadata provider is available.
+        if problem_provider is not None:
+            retry_unmapped_submissions(
+                session,
+                problem_provider=problem_provider,
+                user_id=user_id,
+            )
         session.commit()
         return NeetCodeSyncResult(
             status="SUCCEEDED",

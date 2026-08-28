@@ -6,6 +6,7 @@ export type PrimaryGoal =
   | "LEARNING";
 
 export type LeetCodeExperience = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export type SubmissionSource = "leetcode" | "github_neetcode";
 export type LeaderboardPeriod = "week" | "month" | "all_time";
 
 export interface UserProfile {
@@ -16,6 +17,9 @@ export interface UserProfile {
   primary_goal: PrimaryGoal;
   leetcode_experience: LeetCodeExperience;
   weekly_problem_goal: number;
+  submission_source: SubmissionSource;
+  neetcode_repo_owner: string | null;
+  neetcode_repo_name: string | null;
   scoring_started_at: string;
   onboarding_completed_at: string;
   sync_status: string;
@@ -43,9 +47,20 @@ export interface UserSettingsPayload {
   primary_goal: PrimaryGoal;
   leetcode_experience: LeetCodeExperience;
   weekly_problem_goal: number;
+  submission_source?: SubmissionSource;
+  neetcode_repo_owner?: string | null;
+  neetcode_repo_name?: string | null;
 }
 
-export type UserSettingsResponse = UserSettingsPayload;
+export interface UserSettingsResponse {
+  display_name: string;
+  primary_goal: PrimaryGoal;
+  leetcode_experience: LeetCodeExperience;
+  weekly_problem_goal: number;
+  submission_source: SubmissionSource;
+  neetcode_repo_owner: string | null;
+  neetcode_repo_name: string | null;
+}
 
 export interface LeaderboardEntry {
   rank: number;

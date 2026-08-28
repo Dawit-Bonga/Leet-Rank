@@ -55,6 +55,15 @@ class FakeNeetCodeProvider:
         return list(self.events)
 
 
+class FakeProblemDetailsProvider:
+    def get_problem(self, title_slug: str) -> ProblemDetails:
+        return ProblemDetails(
+            slug=title_slug,
+            title=title_slug.replace("-", " ").title(),
+            difficulty="MEDIUM",
+        )
+
+
 def _event(event_id: str, slug: str, submitted_at: datetime) -> NeetCodeSubmissionEvent:
     return NeetCodeSubmissionEvent(
         provider_submission_id=event_id,
@@ -156,3 +165,72 @@ def test_neetcode_provider_failure_marks_sync_failed():
         assert state is not None
         assert state.sync_status == "FAILED"
         assert state.last_error == "GitHub unavailable"
+
+
+def test_missing_problem_is_auto_resolved_with_leetcode_metadata_provider():
+    with make_session() as session:
+        signup = datetime(2026, 8, 1, tzinfo=UTC)
+        user = add_user(session, signup)
+        missing_slug = "partition-to-k-equal-sum-subsets"
+        event_id = (
+            "github:Dawit-Bonga/neetcode-submissions:xyz123:"
+            "neetcode/partition-to-k-equal-sum-subsets/submission.py"
+        )
+        provider = FakeNeetCodeProvider([_event(event_id, missing_slug, signup + timedelta(hours=1))])
+
+        result = sync_user_neetcode_submissions(
+            session,
+            provider,
+            user_id=user.id,
+            problem_provider=FakeProblemDetailsProvider(),
+        )
+
+        assert result.unmapped_submissions == 0
+        assert result.new_submissions == 1
+        assert session.scalar(select(func.count()).select_from(UnmappedSubmission)) == 0
+        inserted = session.scalar(
+            select(Submission).where(
+                Submission.provider == NEETCODE_PROVIDER,
+                Submission.provider_submission_id == event_id,
+            )
+        )
+        assert inserted is not None
+        problem = session.scalar(select(Problem).where(Problem.leetcode_slug == missing_slug))
+        assert problem is not None
+
+
+def test_sync_retries_previously_queued_unmapped_rows_when_metadata_is_available():
+    with make_session() as session:
+        signup = datetime(2026, 8, 1, tzinfo=UTC)
+        user = add_user(session, signup)
+        missing_slug = "graph-valid-tree"
+        event_id = (
+            "github:Dawit-Bonga/neetcode-submissions:old123:"
+            "neetcode/graph-valid-tree/submission.py"
+        )
+
+        first_run = sync_user_neetcode_submissions(
+            session,
+            FakeNeetCodeProvider([_event(event_id, missing_slug, signup + timedelta(hours=1))]),
+            user_id=user.id,
+        )
+        assert first_run.unmapped_submissions == 1
+        assert session.scalar(select(func.count()).select_from(UnmappedSubmission)) == 1
+
+        second_run = sync_user_neetcode_submissions(
+            session,
+            FakeNeetCodeProvider([]),
+            user_id=user.id,
+            problem_provider=FakeProblemDetailsProvider(),
+        )
+        assert second_run.status == "SUCCEEDED"
+        queued = session.scalar(select(UnmappedSubmission))
+        assert queued is not None
+        assert queued.resolved_at is not None
+        inserted = session.scalar(
+            select(Submission).where(
+                Submission.provider == NEETCODE_PROVIDER,
+                Submission.provider_submission_id == event_id,
+            )
+        )
+        assert inserted is not None

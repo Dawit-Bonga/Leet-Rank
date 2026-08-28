@@ -1,5 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Check, Code2, LockKeyhole, Save, Settings2, Target, UserRound } from "lucide-react";
+import {
+  Check,
+  Code2,
+  LockKeyhole,
+  Save,
+  Settings2,
+  Target,
+  UserRound,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { ApiError, updateSettings } from "../lib/api";
@@ -37,6 +45,12 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
     profile.leetcode_experience,
   );
   const [weeklyGoal, setWeeklyGoal] = useState(profile.weekly_problem_goal);
+  const [neetcodeRepoOwner, setNeetcodeRepoOwner] = useState(
+    profile.neetcode_repo_owner ?? "",
+  );
+  const [neetcodeRepoName, setNeetcodeRepoName] = useState(
+    profile.neetcode_repo_name ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -46,21 +60,31 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
     setPrimaryGoal(profile.primary_goal);
     setExperience(profile.leetcode_experience);
     setWeeklyGoal(profile.weekly_problem_goal);
+    setNeetcodeRepoOwner(profile.neetcode_repo_owner ?? "");
+    setNeetcodeRepoName(profile.neetcode_repo_name ?? "");
   }, [profile]);
 
   const unchanged =
     displayName.trim() === profile.display_name &&
     primaryGoal === profile.primary_goal &&
     experience === profile.leetcode_experience &&
-    weeklyGoal === profile.weekly_problem_goal;
+    weeklyGoal === profile.weekly_problem_goal &&
+    neetcodeRepoOwner.trim() === (profile.neetcode_repo_owner ?? "") &&
+    neetcodeRepoName.trim() === (profile.neetcode_repo_name ?? "");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if ((neetcodeRepoOwner.trim() && !neetcodeRepoName.trim()) || (!neetcodeRepoOwner.trim() && neetcodeRepoName.trim())) {
+      setError("GitHub owner and repository are required for NeetCode sync.");
+      return;
+    }
     const payload: UserSettingsPayload = {
       display_name: displayName,
       primary_goal: primaryGoal,
       leetcode_experience: experience,
       weekly_problem_goal: weeklyGoal,
+      neetcode_repo_owner: neetcodeRepoOwner.trim() || null,
+      neetcode_repo_name: neetcodeRepoName.trim() || null,
     };
     setSaving(true);
     setError(null);
@@ -197,6 +221,56 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
                 </div>
               </label>
             </div>
+
+            <fieldset>
+              <legend className="field-label">Optional NeetCode integration</legend>
+              <p className="mt-1 text-xs text-slate-500">
+                LeetCode sync always stays enabled. Add a NeetCode GitHub repo to ingest
+                accepted-only auto-commit submissions too.
+              </p>
+              <div className="mt-3 grid gap-6 sm:grid-cols-2">
+                <label>
+                  <span className="field-label">GitHub owner</span>
+                  <div className="relative">
+                    <Code2
+                      aria-hidden="true"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600"
+                      size={16}
+                    />
+                    <input
+                      className="field-input field-input-leading"
+                      value={neetcodeRepoOwner}
+                      onChange={(event) => {
+                        setNeetcodeRepoOwner(event.target.value);
+                        setSaved(false);
+                      }}
+                      placeholder="Dawit-Bonga"
+                      maxLength={100}
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span className="field-label">GitHub repository</span>
+                  <div className="relative">
+                    <Code2
+                      aria-hidden="true"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600"
+                      size={16}
+                    />
+                    <input
+                      className="field-input field-input-leading"
+                      value={neetcodeRepoName}
+                      onChange={(event) => {
+                        setNeetcodeRepoName(event.target.value);
+                        setSaved(false);
+                      }}
+                      placeholder="neetcode-submissions"
+                      maxLength={100}
+                    />
+                  </div>
+                </label>
+              </div>
+            </fieldset>
 
             {error && <div className="error-banner">{error}</div>}
             {saved && (

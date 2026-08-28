@@ -8,6 +8,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import User, UserSyncState
+from app.services.neetcode_sync import sync_user_neetcode_submissions
 from app.services.submission_sync import SubmissionProvider, sync_user_submissions
 
 
@@ -41,8 +42,9 @@ def _as_utc(value: datetime) -> datetime:
 
 def sync_due_users(
     session: Session,
-    provider: SubmissionProvider,
+    leetcode_provider: SubmissionProvider,
     *,
+    neetcode_provider=None,
     now: datetime | None = None,
     sync_interval: timedelta = DEFAULT_SYNC_INTERVAL,
     stale_after: timedelta = DEFAULT_STALE_AFTER,
@@ -100,13 +102,23 @@ def sync_due_users(
         try:
             result = sync_user_submissions(
                 session,
-                provider,
+                leetcode_provider,
                 user_id=user.id,
                 now=calculated_at,
             )
             succeeded += 1
             new_submissions += result.new_submissions
             points_awarded += result.points_awarded
+            if neetcode_provider and user.neetcode_repo_owner and user.neetcode_repo_name:
+                neetcode_result = sync_user_neetcode_submissions(
+                    session,
+                    neetcode_provider,
+                    user_id=user.id,
+                    problem_provider=leetcode_provider,
+                    now=calculated_at,
+                )
+                new_submissions += neetcode_result.new_submissions
+                points_awarded += neetcode_result.points_awarded
         except Exception as exc:
             failures.append(
                 AutomaticSyncFailure(
