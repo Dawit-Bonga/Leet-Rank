@@ -244,7 +244,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
                         setNeetcodeRepoOwner(event.target.value);
                         setSaved(false);
                       }}
-                      placeholder="Dawit-Bonga"
+                      placeholder="github-username"
                       maxLength={100}
                     />
                   </div>
