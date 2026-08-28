@@ -69,6 +69,9 @@ def _user_response(
         primary_goal=user.primary_goal,
         leetcode_experience=user.leetcode_experience,
         weekly_problem_goal=user.weekly_problem_goal,
+        submission_source=user.submission_source,
+        neetcode_repo_owner=user.neetcode_repo_owner,
+        neetcode_repo_name=user.neetcode_repo_name,
         scoring_started_at=user.scoring_started_at,
         onboarding_completed_at=user.onboarding_completed_at,
         sync_status=sync_status,
@@ -129,6 +132,11 @@ def update_settings(
                 request.leetcode_experience.value if request.leetcode_experience else None
             ),
             weekly_problem_goal=request.weekly_problem_goal,
+            submission_source=(
+                request.submission_source.value if request.submission_source else None
+            ),
+            neetcode_repo_owner=request.neetcode_repo_owner,
+            neetcode_repo_name=request.neetcode_repo_name,
         )
     except SettingsUserNotFoundError as exc:
         raise HTTPException(
@@ -146,6 +154,9 @@ def update_settings(
         primary_goal=user.primary_goal,
         leetcode_experience=user.leetcode_experience,
         weekly_problem_goal=user.weekly_problem_goal,
+        submission_source=user.submission_source,
+        neetcode_repo_owner=user.neetcode_repo_owner,
+        neetcode_repo_name=user.neetcode_repo_name,
     )
 
 

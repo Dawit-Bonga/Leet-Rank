@@ -57,6 +57,8 @@ def ingest_submission(
     user_id: uuid.UUID,
     submission: AcceptedSubmission,
     problem_details: ProblemDetails,
+    provider: str = "leetcode",
+    provider_submission_id: str | None = None,
 ) -> IngestionResult:
     user = session.get(User, user_id)
     if user is None:
@@ -66,10 +68,11 @@ def ingest_submission(
     if submitted_at < _as_utc(user.scoring_started_at):
         return IngestionResult(status="ignored_before_signup")
 
+    provider_event_id = provider_submission_id or submission.external_id
     existing = session.scalar(
         select(Submission).where(
-            Submission.user_id == user_id,
-            Submission.external_submission_id == submission.external_id,
+            Submission.provider == provider,
+            Submission.provider_submission_id == provider_event_id,
         )
     )
     if existing is not None:
@@ -103,6 +106,8 @@ def ingest_submission(
     stored_submission = Submission(
         user_id=user_id,
         problem_id=problem.id,
+        provider=provider,
+        provider_submission_id=provider_event_id,
         external_submission_id=submission.external_id,
         submitted_at=submitted_at,
     )
@@ -142,6 +147,7 @@ def sync_user_submissions(
     user = session.get(User, user_id)
     if user is None:
         raise SyncUserNotFoundError("LeetRank user does not exist.")
+    provider_name = getattr(provider, "provider_name", "leetcode")
 
     sync_state = session.get(UserSyncState, user_id)
     if sync_state is None:
@@ -176,8 +182,8 @@ def sync_user_submissions(
 
             existing_submission = session.scalar(
                 select(Submission.id).where(
-                    Submission.user_id == user_id,
-                    Submission.external_submission_id == accepted.external_id,
+                    Submission.provider == provider_name,
+                    Submission.provider_submission_id == accepted.external_id,
                 )
             )
             if existing_submission is not None:
@@ -204,6 +210,8 @@ def sync_user_submissions(
                 user_id=user_id,
                 submission=accepted,
                 problem_details=details,
+                provider=provider_name,
+                provider_submission_id=accepted.external_id,
             )
             if ingestion.status == "scored":
                 result_counts["new"] += 1

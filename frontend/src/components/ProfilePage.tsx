@@ -109,6 +109,10 @@ export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
     7,
     scores?.as_of,
   );
+  const submissionInputLabel =
+    profile.neetcode_repo_owner && profile.neetcode_repo_name
+      ? "LeetCode + NeetCode"
+      : "LeetCode only";
 
   async function shareProfile() {
     const url = `${window.location.origin}/u/${profile.username}`;
@@ -243,9 +247,18 @@ export function ProfilePage({ accessToken, profile }: ProfilePageProps) {
           </div>
           <dl className="grid gap-2.5 p-4 sm:grid-cols-2">
             <ProfileDetail label="LeetCode" value={`@${profile.leetcode_username}`} />
+            <ProfileDetail label="Submission inputs" value={submissionInputLabel} />
             <ProfileDetail label="Weekly goal" value={`${profile.weekly_problem_goal} problems`} />
             <ProfileDetail label="Primary goal" value={readableLabel(profile.primary_goal)} />
             <ProfileDetail label="Experience" value={readableLabel(profile.leetcode_experience)} />
+            {profile.neetcode_repo_owner && profile.neetcode_repo_name && (
+              <ProfileDetail
+                label="NeetCode repo"
+                value={
+                  `${profile.neetcode_repo_owner}/${profile.neetcode_repo_name}`
+                }
+              />
+            )}
             <ProfileDetail
               label="Friends"
               value={

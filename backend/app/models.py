@@ -27,6 +27,15 @@ class User(Base):
         ),
         CheckConstraint("length(username) BETWEEN 3 AND 30", name="ck_users_username_length"),
         CheckConstraint("username = lower(username)", name="ck_users_username_lowercase"),
+        CheckConstraint(
+            "submission_source IN ('leetcode', 'github_neetcode')",
+            name="ck_users_submission_source",
+        ),
+        CheckConstraint(
+            "(neetcode_repo_owner IS NULL AND neetcode_repo_name IS NULL) "
+            "OR (neetcode_repo_owner IS NOT NULL AND neetcode_repo_name IS NOT NULL)",
+            name="ck_users_neetcode_repo_pair",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -37,6 +46,9 @@ class User(Base):
     primary_goal: Mapped[str | None] = mapped_column(String(24))
     leetcode_experience: Mapped[str | None] = mapped_column(String(16))
     weekly_problem_goal: Mapped[int | None] = mapped_column(Integer)
+    submission_source: Mapped[str] = mapped_column(String(32), nullable=False, default="leetcode")
+    neetcode_repo_owner: Mapped[str | None] = mapped_column(String(100))
+    neetcode_repo_name: Mapped[str | None] = mapped_column(String(100))
     scoring_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -56,14 +68,18 @@ class Problem(Base):
 class Submission(Base):
     __tablename__ = "submissions"
     __table_args__ = (
-        UniqueConstraint("user_id", "external_submission_id", name="uq_submissions_user_external_id"),
+        CheckConstraint("provider IN ('leetcode', 'github_neetcode')", name="ck_submissions_provider"),
+        UniqueConstraint("provider", "provider_submission_id", name="uq_submissions_provider_event"),
         Index("ix_submissions_user_submitted_at", "user_id", "submitted_at"),
+        Index("ix_submissions_provider_event", "provider", "provider_submission_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     problem_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("problems.id"), nullable=False)
-    external_submission_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="leetcode")
+    provider_submission_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    external_submission_id: Mapped[str] = mapped_column(String(255), nullable=False)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
@@ -135,3 +151,24 @@ class FriendRequest(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class UnmappedSubmission(Base):
+    __tablename__ = "unmapped_submissions"
+    __table_args__ = (
+        CheckConstraint("provider IN ('leetcode', 'github_neetcode')", name="ck_unmapped_submissions_provider"),
+        UniqueConstraint("provider", "provider_submission_id", name="uq_unmapped_submissions_provider_event"),
+        Index("ix_unmapped_submissions_created_at", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_submission_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    problem_slug: Mapped[str] = mapped_column(String(255), nullable=False)
+    problem_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metadata_json: Mapped[str | None] = mapped_column(String(4000))
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

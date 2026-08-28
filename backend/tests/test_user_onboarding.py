@@ -125,6 +125,9 @@ def test_authenticated_user_can_update_profile_settings(onboarding_client):
         "primary_goal": "COMPETITION",
         "leetcode_experience": "ADVANCED",
         "weekly_problem_goal": 9,
+        "submission_source": "leetcode",
+        "neetcode_repo_owner": None,
+        "neetcode_repo_name": None,
     }
     profile = client.get("/users/me").json()["profile"]
     assert profile["display_name"] == "Alice Updated"

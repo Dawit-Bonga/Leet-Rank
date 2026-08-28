@@ -81,6 +81,8 @@ class ProblemDetails:
 
 
 class LeetCodeGraphQLClient:
+    provider_name = "leetcode"
+
     def __init__(
         self,
         *,

@@ -4,8 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.database import Base
-from app.models import User, UserSyncState
+from app.models import Problem, User, UserSyncState
 from app.services.automatic_sync import sync_due_users
+from app.services.neetcode_sync import NEETCODE_PROVIDER, NeetCodeSubmissionEvent
 from app.services.leetcode import UpstreamUnavailableError
 
 
@@ -22,6 +23,27 @@ class BatchProvider:
 
     def get_problem(self, title_slug: str):
         raise AssertionError("No problem lookup is expected for an empty submission list.")
+
+
+class FakeNeetCodeProvider:
+    provider_name = NEETCODE_PROVIDER
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, int]] = []
+
+    def get_recent_accepted_submissions(self, *, owner: str, repo: str, limit: int = 100):
+        self.calls.append((owner, repo, limit))
+        return [
+            NeetCodeSubmissionEvent(
+                provider_submission_id=f"github:{owner}/{repo}:abc:neetcode/two-sum/submission.py",
+                problem_slug="two-sum",
+                problem_title="Two Sum",
+                submitted_at=datetime(2026, 1, 2, 12, tzinfo=UTC),
+                repository=f"{owner}/{repo}",
+                commit_sha="abc",
+                file_path="neetcode/two-sum/submission.py",
+            )
+        ]
 
 
 def make_session() -> Session:
@@ -133,3 +155,26 @@ def test_batch_size_limits_each_run():
 
         assert result.attempted == 1
         assert len(provider.requested_usernames) == 1
+
+
+def test_batch_runs_optional_neetcode_sync_when_repo_is_configured():
+    now = datetime(2026, 1, 2, 12, tzinfo=UTC)
+    with make_session() as session:
+        with_repo = add_account(session, username="withrepo")
+        with_repo.neetcode_repo_owner = "Dawit-Bonga"
+        with_repo.neetcode_repo_name = "neetcode-submissions"
+        session.add(Problem(leetcode_slug="two-sum", title="Two Sum", difficulty="EASY"))
+        session.commit()
+
+        provider = BatchProvider()
+        neetcode_provider = FakeNeetCodeProvider()
+        result = sync_due_users(
+            session,
+            provider,
+            neetcode_provider=neetcode_provider,
+            now=now,
+        )
+
+        assert result.attempted == 1
+        assert result.succeeded == 1
+        assert neetcode_provider.calls == [("Dawit-Bonga", "neetcode-submissions", 100)]
