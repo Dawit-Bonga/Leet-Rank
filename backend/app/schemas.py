@@ -165,6 +165,7 @@ class ActivityProblem(BaseModel):
 class ActivityItem(BaseModel):
     id: UUID
     problem: ActivityProblem
+    provider: SubmissionSource
     points: int
     reason: str
     earned_at: datetime

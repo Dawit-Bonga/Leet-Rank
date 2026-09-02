@@ -28,11 +28,21 @@ class BatchProvider:
 class FakeNeetCodeProvider:
     provider_name = NEETCODE_PROVIDER
 
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, str, int]] = []
+    def __init__(self, error: Exception | None = None) -> None:
+        self.calls: list[tuple[str, str, int, datetime | None]] = []
+        self.error = error
 
-    def get_recent_accepted_submissions(self, *, owner: str, repo: str, limit: int = 100):
-        self.calls.append((owner, repo, limit))
+    def get_recent_accepted_submissions(
+        self,
+        *,
+        owner: str,
+        repo: str,
+        limit: int = 100,
+        since: datetime | None = None,
+    ):
+        self.calls.append((owner, repo, limit, since))
+        if self.error is not None:
+            raise self.error
         return [
             NeetCodeSubmissionEvent(
                 provider_submission_id=f"github:{owner}/{repo}:abc:neetcode/two-sum/submission.py",
@@ -177,4 +187,27 @@ def test_batch_runs_optional_neetcode_sync_when_repo_is_configured():
 
         assert result.attempted == 1
         assert result.succeeded == 1
-        assert neetcode_provider.calls == [("Dawit-Bonga", "neetcode-submissions", 100)]
+        assert neetcode_provider.calls == [
+            ("Dawit-Bonga", "neetcode-submissions", 100, None)
+        ]
+
+
+def test_neetcode_failure_does_not_also_count_account_as_succeeded():
+    now = datetime(2026, 1, 2, 12, tzinfo=UTC)
+    with make_session() as session:
+        user = add_account(session, username="withrepo")
+        user.neetcode_repo_owner = "Dawit-Bonga"
+        user.neetcode_repo_name = "neetcode-submissions"
+        session.commit()
+
+        result = sync_due_users(
+            session,
+            BatchProvider(),
+            neetcode_provider=FakeNeetCodeProvider(RuntimeError("GitHub failed")),
+            now=now,
+        )
+
+        assert result.attempted == 1
+        assert result.succeeded == 0
+        assert result.failed == 1
+        assert result.succeeded + result.failed == result.attempted

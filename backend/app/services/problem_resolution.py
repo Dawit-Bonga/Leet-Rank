@@ -88,7 +88,10 @@ def retry_unmapped_submissions(
     query = (
         select(UnmappedSubmission)
         .where(UnmappedSubmission.resolved_at.is_(None))
-        .order_by(UnmappedSubmission.created_at.asc())
+        .order_by(
+            UnmappedSubmission.submitted_at.asc(),
+            UnmappedSubmission.created_at.asc(),
+        )
     )
     if user_id is not None:
         query = query.where(UnmappedSubmission.user_id == user_id)

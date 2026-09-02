@@ -106,7 +106,6 @@ def sync_due_users(
                 user_id=user.id,
                 now=calculated_at,
             )
-            succeeded += 1
             new_submissions += result.new_submissions
             points_awarded += result.points_awarded
             if neetcode_provider and user.neetcode_repo_owner and user.neetcode_repo_name:
@@ -119,6 +118,7 @@ def sync_due_users(
                 )
                 new_submissions += neetcode_result.new_submissions
                 points_awarded += neetcode_result.points_awarded
+            succeeded += 1
         except Exception as exc:
             failures.append(
                 AutomaticSyncFailure(

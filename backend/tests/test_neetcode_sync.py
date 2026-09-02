@@ -5,7 +5,15 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.database import Base
-from app.models import Problem, ScoreEvent, Submission, UnmappedSubmission, User, UserSyncState
+from app.models import (
+    Problem,
+    ScoreEvent,
+    Submission,
+    UnmappedSubmission,
+    User,
+    UserProblemStats,
+    UserSyncState,
+)
 from app.services.leetcode import AcceptedSubmission, ProblemDetails
 from app.services.neetcode_sync import (
     NEETCODE_PROVIDER,
@@ -46,10 +54,17 @@ class FakeNeetCodeProvider:
     def __init__(self, events=None, error: Exception | None = None):
         self.events = events or []
         self.error = error
-        self.calls: list[tuple[str, str, int]] = []
+        self.calls: list[tuple[str, str, int, datetime | None]] = []
 
-    def get_recent_accepted_submissions(self, *, owner: str, repo: str, limit: int = 100):
-        self.calls.append((owner, repo, limit))
+    def get_recent_accepted_submissions(
+        self,
+        *,
+        owner: str,
+        repo: str,
+        limit: int = 100,
+        since: datetime | None = None,
+    ):
+        self.calls.append((owner, repo, limit, since))
         if self.error is not None:
             raise self.error
         return list(self.events)
@@ -217,13 +232,15 @@ def test_sync_retries_previously_queued_unmapped_rows_when_metadata_is_available
         assert first_run.unmapped_submissions == 1
         assert session.scalar(select(func.count()).select_from(UnmappedSubmission)) == 1
 
+        second_provider = FakeNeetCodeProvider([])
         second_run = sync_user_neetcode_submissions(
             session,
-            FakeNeetCodeProvider([]),
+            second_provider,
             user_id=user.id,
             problem_provider=FakeProblemDetailsProvider(),
         )
         assert second_run.status == "SUCCEEDED"
+        assert second_provider.calls[0][3] == signup + timedelta(minutes=55)
         queued = session.scalar(select(UnmappedSubmission))
         assert queued is not None
         assert queued.resolved_at is not None
@@ -234,3 +251,63 @@ def test_sync_retries_previously_queued_unmapped_rows_when_metadata_is_available
             )
         )
         assert inserted is not None
+
+
+def test_late_github_submission_rebuilds_shared_cross_provider_timeline():
+    with make_session() as session:
+        signup = datetime(2026, 8, 1, tzinfo=UTC)
+        user = add_user(session, signup)
+        problem = Problem(leetcode_slug="two-sum", title="Two Sum", difficulty="EASY")
+        session.add(problem)
+        session.commit()
+
+        later_leetcode = signup + timedelta(days=2)
+        ingest_submission(
+            session,
+            user_id=user.id,
+            submission=AcceptedSubmission(
+                external_id="leetcode:later",
+                problem_slug="two-sum",
+                problem_title="Two Sum",
+                submitted_at=later_leetcode,
+            ),
+            problem_details=ProblemDetails(
+                slug="two-sum",
+                title="Two Sum",
+                difficulty="EASY",
+            ),
+            provider="leetcode",
+            provider_submission_id="leetcode:later",
+        )
+
+        github_event_id = (
+            "github:Dawit-Bonga/neetcode-submissions:older:"
+            "neetcode/two-sum/submission.py"
+        )
+        result = sync_user_neetcode_submissions(
+            session,
+            FakeNeetCodeProvider(
+                [_event(github_event_id, "two-sum", signup + timedelta(days=1))]
+            ),
+            user_id=user.id,
+        )
+
+        assert result.status == "SUCCEEDED"
+        assert result.new_submissions == 1
+        assert result.points_awarded == 0
+        events = list(
+            session.execute(
+                select(ScoreEvent, Submission.provider)
+                .join(Submission, Submission.id == ScoreEvent.submission_id)
+                .where(ScoreEvent.user_id == user.id)
+                .order_by(ScoreEvent.earned_at)
+            )
+        )
+        assert [(event.reason, event.points, provider) for event, provider in events] == [
+            ("FIRST_SOLVE", 10, "github_neetcode"),
+            ("COOLDOWN", 0, "leetcode"),
+        ]
+        stats = session.get(UserProblemStats, (user.id, problem.id))
+        assert stats is not None
+        assert stats.first_solved_at.replace(tzinfo=UTC) == signup + timedelta(days=1)
+        assert stats.last_solved_at.replace(tzinfo=UTC) == later_leetcode

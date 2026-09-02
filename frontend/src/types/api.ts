@@ -151,6 +151,7 @@ export interface ActivityItem {
     slug: string;
     difficulty: "EASY" | "MEDIUM" | "HARD";
   };
+  provider: SubmissionSource;
   points: number;
   reason: "FIRST_SOLVE" | "REVIEW" | "COOLDOWN";
   earned_at: string;

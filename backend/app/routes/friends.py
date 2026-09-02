@@ -348,6 +348,7 @@ def get_accepted_friend_profile(
                     slug=item.problem_slug,
                     difficulty=item.difficulty,
                 ),
+                provider=item.provider,
                 points=item.points,
                 reason=item.reason,
                 earned_at=item.earned_at,

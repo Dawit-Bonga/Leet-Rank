@@ -43,6 +43,13 @@ New accounts are due immediately. After a run, an account is not selected again
 for 15 minutes. Production scheduling will invoke the same command every 15
 minutes; users do not trigger synchronization from the application.
 
+Users may optionally connect a NeetCode auto-commit GitHub repository from
+settings. The scheduler reads `GITHUB_TOKEN` from the cron job environment.
+The token stays on the backend and needs read access to connected repositories.
+Public repositories are recommended for V1; private repositories must be
+explicitly accessible to the token. After the initial scan, synchronization
+requests only commits newer than the latest stored or queued GitHub event.
+
 The frontend requires `frontend/.env.local`. Copy `frontend/.env.example` and
 set the Supabase project URL and publishable key. Never place a Supabase secret
 key or database password in a `VITE_` environment variable.
@@ -62,6 +69,9 @@ equivalent production reset URL, for example:
 ```text
 https://app.example.com/reset-password
 ```
+
+For shared profiles and authentication return routes, also allow the deployed
+frontend wildcard, for example `https://app.example.com/**`.
 
 Password recovery emails redirect to this public frontend route. Production
 deployments must also serve the Vite application for direct requests to

@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models import Problem, ScoreEvent, Submission, User, UserProblemStats
 from app.models import UserSyncState
 from app.services.leetcode import AcceptedSubmission, ProblemDetails
-from app.services.scoring import ProblemStatsSnapshot, calculate_score
+from app.services.scoring import ProblemStatsSnapshot, ScoreDecision, calculate_score
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,81 @@ def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _rebuild_problem_scoring(
+    session: Session,
+    *,
+    user_id: uuid.UUID,
+    problem: Problem,
+    inserted_submission_id: uuid.UUID,
+    stats: UserProblemStats,
+) -> tuple[ScoreDecision, int]:
+    """Rebuild one problem's ledger when a provider discovers an older event."""
+    previous_total = int(
+        session.scalar(
+            select(func.coalesce(func.sum(ScoreEvent.points), 0)).where(
+                ScoreEvent.user_id == user_id,
+                ScoreEvent.problem_id == problem.id,
+            )
+        )
+        or 0
+    )
+    submissions = list(
+        session.scalars(
+            select(Submission)
+            .where(
+                Submission.user_id == user_id,
+                Submission.problem_id == problem.id,
+            )
+            .order_by(
+                Submission.submitted_at.asc(),
+                Submission.created_at.asc(),
+                Submission.id.asc(),
+            )
+        )
+    )
+
+    session.execute(
+        delete(ScoreEvent).where(
+            ScoreEvent.user_id == user_id,
+            ScoreEvent.problem_id == problem.id,
+        )
+    )
+    session.flush()
+
+    snapshot: ProblemStatsSnapshot | None = None
+    inserted_decision: ScoreDecision | None = None
+    rebuilt_total = 0
+    for stored_submission in submissions:
+        decision = calculate_score(
+            problem.difficulty,
+            _as_utc(stored_submission.submitted_at),
+            snapshot,
+        )
+        session.add(
+            ScoreEvent(
+                user_id=user_id,
+                problem_id=problem.id,
+                submission_id=stored_submission.id,
+                points=decision.points,
+                reason=decision.reason.value,
+                earned_at=_as_utc(stored_submission.submitted_at),
+            )
+        )
+        snapshot = decision.stats
+        rebuilt_total += decision.points
+        if stored_submission.id == inserted_submission_id:
+            inserted_decision = decision
+
+    if snapshot is None or inserted_decision is None:
+        raise RuntimeError("Could not rebuild submission scoring state.")
+
+    stats.first_solved_at = snapshot.first_solved_at
+    stats.last_solved_at = snapshot.last_solved_at
+    stats.last_rewarded_at = snapshot.last_rewarded_at
+    stats.rewarded_solve_count = snapshot.rewarded_solve_count
+    return inserted_decision, rebuilt_total - previous_total
 
 
 def ingest_submission(
@@ -102,7 +177,6 @@ def ingest_submission(
             rewarded_solve_count=stats.rewarded_solve_count,
         )
 
-    decision = calculate_score(problem.difficulty, submitted_at, snapshot)
     stored_submission = Submission(
         user_id=user_id,
         problem_id=problem.id,
@@ -113,6 +187,23 @@ def ingest_submission(
     )
     session.add(stored_submission)
     session.flush()
+
+    if stats is not None and submitted_at < _as_utc(stats.last_solved_at):
+        decision, points_delta = _rebuild_problem_scoring(
+            session,
+            user_id=user_id,
+            problem=problem,
+            inserted_submission_id=stored_submission.id,
+            stats=stats,
+        )
+        session.commit()
+        return IngestionResult(
+            status="scored",
+            points=points_delta,
+            reason=decision.reason.value,
+        )
+
+    decision = calculate_score(problem.difficulty, submitted_at, snapshot)
     session.add(
         ScoreEvent(
             user_id=user_id,
