@@ -50,6 +50,25 @@ Public repositories are recommended for V1; private repositories must be
 explicitly accessible to the token. After the initial scan, synchronization
 requests only commits newer than the latest stored or queued GitHub event.
 
+NeetCode sometimes uses a different problem slug than LeetCode. Confirmed
+differences are mapped in `backend/app/services/problem_resolution.py`.
+Unrecognized slugs remain safely queued in `unmapped_submissions` and are
+retried by later synchronization runs. Review unresolved slugs with:
+
+```sql
+SELECT
+    problem_slug,
+    COUNT(*) AS submission_count,
+    COUNT(DISTINCT user_id) AS affected_users,
+    MIN(submitted_at) AS first_seen_at,
+    MAX(submitted_at) AS last_seen_at,
+    MAX(last_error) AS latest_error
+FROM unmapped_submissions
+WHERE resolved_at IS NULL
+GROUP BY problem_slug
+ORDER BY affected_users DESC, submission_count DESC;
+```
+
 The frontend requires `frontend/.env.local`. Copy `frontend/.env.example` and
 set the Supabase project URL and publishable key. Never place a Supabase secret
 key or database password in a `VITE_` environment variable.

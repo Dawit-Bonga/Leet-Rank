@@ -167,6 +167,38 @@ def test_unmapped_neetcode_events_are_queued_and_retryable():
         assert inserted is not None
 
 
+def test_confirmed_neetcode_alias_is_scored_during_initial_ingestion():
+    with make_session() as session:
+        signup = datetime(2026, 9, 1, tzinfo=UTC)
+        user = add_user(session, signup)
+        problem = Problem(
+            leetcode_slug="rotting-oranges",
+            title="Rotting Oranges",
+            difficulty="MEDIUM",
+        )
+        session.add(problem)
+        session.commit()
+
+        event_id = (
+            "github:alice/neetcode-solutions:commit123:"
+            "Data Structures & Algorithms/rotting-fruit/submission-5.py"
+        )
+        result = sync_user_neetcode_submissions(
+            session,
+            FakeNeetCodeProvider(
+                [_event(event_id, "rotting-fruit", signup + timedelta(hours=1))]
+            ),
+            user_id=user.id,
+        )
+
+        assert result.new_submissions == 1
+        assert result.unmapped_submissions == 0
+        assert result.points_awarded == 20
+        submission = session.scalar(select(Submission))
+        assert submission is not None
+        assert submission.problem_id == problem.id
+
+
 def test_neetcode_provider_failure_marks_sync_failed():
     with make_session() as session:
         signup = datetime(2026, 8, 1, tzinfo=UTC)

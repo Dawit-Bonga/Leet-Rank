@@ -17,6 +17,14 @@ from app.services.submission_sync import ingest_submission
 
 _SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 
+# NeetCode occasionally uses a different URL slug for the same LeetCode
+# problem. Keep only confirmed aliases here so a similar-looking title cannot
+# award points for the wrong problem.
+NEETCODE_TO_LEETCODE_SLUG = {
+    "duplicate-integer": "contains-duplicate",
+    "rotting-fruit": "rotting-oranges",
+}
+
 
 @dataclass(frozen=True)
 class ProblemLookupResult:
@@ -34,8 +42,13 @@ def normalize_problem_slug(value: str) -> str:
     return _SLUG_SANITIZER.sub("", collapsed).strip("-")
 
 
+def canonical_problem_slug(value: str) -> str:
+    normalized_slug = normalize_problem_slug(value)
+    return NEETCODE_TO_LEETCODE_SLUG.get(normalized_slug, normalized_slug)
+
+
 def resolve_problem_by_slug(session: Session, raw_slug: str) -> ProblemLookupResult:
-    normalized_slug = normalize_problem_slug(raw_slug)
+    normalized_slug = canonical_problem_slug(raw_slug)
     problem = None
     if normalized_slug:
         problem = session.scalar(select(Problem).where(Problem.leetcode_slug == normalized_slug))
