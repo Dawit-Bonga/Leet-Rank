@@ -21,6 +21,7 @@ _SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 # problem. Keep only confirmed aliases here so a similar-looking title cannot
 # award points for the wrong problem.
 NEETCODE_TO_LEETCODE_SLUG = {
+    "count-number-of-islands": "number-of-islands",
     "duplicate-integer": "contains-duplicate",
     "rotting-fruit": "rotting-oranges",
 }
