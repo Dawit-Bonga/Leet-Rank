@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.models import Problem, ScoreEvent, User
+from app.models import Problem, ScoreEvent, Submission, User
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ class ActivityItemResult:
     problem_title: str
     problem_slug: str
     difficulty: str
+    provider: str
     points: int
     reason: str
     earned_at: datetime
@@ -129,8 +130,9 @@ def get_user_activity(
         raise ScoreUserNotFoundError("LeetClimb user does not exist.")
 
     rows = session.execute(
-        select(ScoreEvent, Problem)
+        select(ScoreEvent, Problem, Submission.provider)
         .join(Problem, Problem.id == ScoreEvent.problem_id)
+        .join(Submission, Submission.id == ScoreEvent.submission_id)
         .where(ScoreEvent.user_id == user_id)
         .order_by(ScoreEvent.earned_at.desc(), ScoreEvent.id.desc())
         .limit(limit + 1)
@@ -143,11 +145,12 @@ def get_user_activity(
             problem_title=problem.title,
             problem_slug=problem.leetcode_slug,
             difficulty=problem.difficulty,
+            provider=provider,
             points=event.points,
             reason=event.reason,
             earned_at=_as_utc(event.earned_at),
         )
-        for event, problem in rows[:limit]
+        for event, problem, provider in rows[:limit]
     ]
     return UserActivityResult(
         items=items,

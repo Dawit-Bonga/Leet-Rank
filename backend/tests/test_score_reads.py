@@ -18,11 +18,21 @@ def make_session() -> Session:
     return Session(engine)
 
 
-def add_scored_event(session, user, problem, *, external_id, earned_at, points, reason):
+def add_scored_event(
+    session,
+    user,
+    problem,
+    *,
+    external_id,
+    earned_at,
+    points,
+    reason,
+    provider="leetcode",
+):
     submission = Submission(
         user_id=user.id,
         problem_id=problem.id,
-        provider="leetcode",
+        provider=provider,
         provider_submission_id=external_id,
         external_submission_id=external_id,
         submitted_at=earned_at,
@@ -86,6 +96,7 @@ def seed_scores(session):
         earned_at=AS_OF - timedelta(days=1),
         points=0,
         reason="COOLDOWN",
+        provider="github_neetcode",
     )
     session.commit()
     return user
@@ -115,6 +126,8 @@ def test_activity_is_newest_first_includes_zero_points_and_paginates():
 
         assert [item.reason for item in first_page.items] == ["COOLDOWN", "REVIEW"]
         assert first_page.items[0].points == 0
+        assert first_page.items[0].provider == "github_neetcode"
+        assert first_page.items[1].provider == "leetcode"
         assert first_page.has_more is True
         assert len(second_page.items) == 2
         assert second_page.has_more is False

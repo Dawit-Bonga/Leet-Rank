@@ -26,6 +26,13 @@
   scoring decisions remain auditable.
 - Scoring occurs once, transactionally, when an eligible accepted submission
   is first ingested.
+- LeetCode and GitHub/NeetCode submissions share the same per-user/problem
+  scoring history. A provider does not create a second first-solve opportunity.
+- Activity retains the submission provider so users can see where each scored
+  event originated.
+- If a provider discovers an older submission after a newer event was ingested,
+  the affected user/problem ledger is rebuilt from stored submissions in
+  timestamp order so cooldown decisions remain deterministic.
 
 ## V1 leaderboard periods
 
@@ -57,6 +64,9 @@
   after its last attempt.
 - Each synchronization requests at most the latest 20 accepted submissions and
   uses their real LeetCode submission IDs for deduplication.
+- Optional NeetCode synchronization reads GitHub auto-commit repositories with
+  a backend-only token. After the initial scan, it uses the newest stored or
+  queued GitHub event as an incremental timestamp with a small overlap.
 - One user's failure does not stop the remaining batch. A `RUNNING` state older
   than 30 minutes is treated as abandoned and recovered by the next job.
 - LeetClimb tables are not a browser-facing Supabase Data API. Row Level
@@ -140,6 +150,6 @@ All time means since connecting LeetCode.
 All timestamps use UTC.
 
 # Scoring Defaults
-Easy : 5, 3 on review
-Medium: 10, 6 on review
-Hard: 20, 10 on Review
+Easy: 10, 3 on review
+Medium: 20, 6 on review
+Hard: 30, 10 on review

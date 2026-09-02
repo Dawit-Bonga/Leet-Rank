@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 
-from app.services.leetcode import UpstreamBadResponseError, UpstreamUnavailableError
+from app.services.leetcode import (
+    UpstreamBadResponseError,
+    UpstreamRateLimitedError,
+    UpstreamUnavailableError,
+)
 from app.services.neetcode_sync import NEETCODE_PROVIDER, NeetCodeSubmissionEvent
 
 
@@ -48,16 +52,62 @@ class GitHubNeetCodeClient:
     def __exit__(self, *_: object) -> None:
         self.close()
 
-    def _get_json(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
+    @staticmethod
+    def _error_message(response: httpx.Response) -> str | None:
+        try:
+            body = response.json()
+        except json.JSONDecodeError:
+            return None
+        message = body.get("message") if isinstance(body, dict) else None
+        return message if isinstance(message, str) else None
+
+    def _get_json(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        empty_on_conflict: bool = False,
+    ) -> Any:
         try:
             response = self._client.get(path, params=params)
         except httpx.RequestError as exc:
             raise UpstreamUnavailableError("Could not reach GitHub.") from exc
 
-        if response.status_code >= 500:
-            raise UpstreamUnavailableError("GitHub is currently unavailable.")
-        if response.status_code != 200:
-            raise UpstreamBadResponseError("Unexpected status from GitHub.")
+        status = response.status_code
+        message = self._error_message(response)
+        if status == 409 and empty_on_conflict:
+            return []
+        if status == 401:
+            raise UpstreamBadResponseError(
+                "GitHub authentication failed (401). Check the cron job's GITHUB_TOKEN."
+            )
+        if status == 429 or (
+            status == 403 and response.headers.get("x-ratelimit-remaining") == "0"
+        ):
+            reset = response.headers.get("x-ratelimit-reset")
+            reset_detail = f" Reset timestamp: {reset}." if reset else ""
+            raise UpstreamRateLimitedError(
+                f"GitHub API rate limit reached ({status}).{reset_detail}"
+            )
+        if status == 403:
+            raise UpstreamBadResponseError(
+                f"GitHub denied repository access (403). {message or 'Check token permissions.'}"
+            )
+        if status == 404:
+            raise UpstreamBadResponseError(
+                "GitHub repository or commit was not found (404). Check the owner, "
+                "repository name, visibility, and token access."
+            )
+        if status == 422:
+            raise UpstreamBadResponseError(
+                f"GitHub rejected the repository request (422). {message or 'Check the owner and repository name.'}"
+            )
+        if status >= 500:
+            raise UpstreamUnavailableError(f"GitHub is currently unavailable ({status}).")
+        if status != 200:
+            raise UpstreamBadResponseError(
+                f"Unexpected response from GitHub ({status}). {message or 'No error details were returned.'}"
+            )
         try:
             return response.json()
         except json.JSONDecodeError as exc:
@@ -78,11 +128,19 @@ class GitHubNeetCodeClient:
         owner: str,
         repo: str,
         limit: int = 100,
+        since: datetime | None = None,
     ) -> list[NeetCodeSubmissionEvent]:
         per_page = min(max(limit, 1), 100)
+        params: dict[str, Any] = {"per_page": per_page}
+        if since is not None:
+            normalized_since = since if since.tzinfo else since.replace(tzinfo=UTC)
+            params["since"] = normalized_since.astimezone(UTC).isoformat().replace(
+                "+00:00", "Z"
+            )
         commits = self._get_json(
             f"/repos/{owner}/{repo}/commits",
-            params={"per_page": per_page},
+            params=params,
+            empty_on_conflict=True,
         )
         if not isinstance(commits, list):
             raise UpstreamBadResponseError("GitHub commits payload is malformed.")

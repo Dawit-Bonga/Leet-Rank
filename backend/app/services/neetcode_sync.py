@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Submission, User, UserSyncState
+from app.models import Submission, UnmappedSubmission, User, UserSyncState
 from app.services.leetcode import AcceptedSubmission, ProblemDetails
 from app.services.problem_resolution import (
     ProblemDetailsProvider,
@@ -20,6 +20,7 @@ from app.services.submission_sync import IngestionResult, SyncAlreadyRunningErro
 
 
 NEETCODE_PROVIDER = "github_neetcode"
+GITHUB_SYNC_OVERLAP = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,7 @@ class NeetCodeSubmissionProvider(Protocol):
         owner: str,
         repo: str,
         limit: int = 100,
+        since: datetime | None = None,
     ) -> list[NeetCodeSubmissionEvent]: ...
 
 
@@ -162,10 +164,30 @@ def sync_user_neetcode_submissions(
     session.commit()
 
     try:
+        latest_submission_at = session.scalar(
+            select(func.max(Submission.submitted_at)).where(
+                Submission.user_id == user_id,
+                Submission.provider == NEETCODE_PROVIDER,
+            )
+        )
+        latest_unmapped_at = session.scalar(
+            select(func.max(UnmappedSubmission.submitted_at)).where(
+                UnmappedSubmission.user_id == user_id,
+                UnmappedSubmission.provider == NEETCODE_PROVIDER,
+            )
+        )
+        known_timestamps = [
+            _as_utc(value)
+            for value in (latest_submission_at, latest_unmapped_at)
+            if value is not None
+        ]
+        since = max(known_timestamps) - GITHUB_SYNC_OVERLAP if known_timestamps else None
+
         events = provider.get_recent_accepted_submissions(
             owner=user.neetcode_repo_owner,
             repo=user.neetcode_repo_name,
             limit=limit,
+            since=since,
         )
         events.sort(key=lambda item: item.submitted_at)
         result_counts = {
