@@ -39,6 +39,8 @@ def create_onboarded_user(
     primary_goal: str,
     leetcode_experience: str,
     weekly_problem_goal: int,
+    neetcode_repo_owner: str | None = None,
+    neetcode_repo_name: str | None = None,
     now: datetime | None = None,
 ) -> tuple[User, UserSyncState]:
     existing_profile = session.scalar(
@@ -89,6 +91,12 @@ def create_onboarded_user(
         primary_goal=primary_goal,
         leetcode_experience=leetcode_experience,
         weekly_problem_goal=weekly_problem_goal,
+        neetcode_repo_owner=(
+            neetcode_repo_owner.strip() if neetcode_repo_owner is not None else None
+        ),
+        neetcode_repo_name=(
+            neetcode_repo_name.strip() if neetcode_repo_name is not None else None
+        ),
         scoring_started_at=scoring_start,
         onboarding_completed_at=scoring_start,
     )

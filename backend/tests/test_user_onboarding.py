@@ -82,6 +82,60 @@ def test_onboarding_creates_user_and_idle_sync_state(onboarding_client):
     assert session.scalar(select(func.count()).select_from(UserSyncState)) == 1
 
 
+def test_onboarding_can_connect_optional_neetcode_repository(onboarding_client):
+    client, session, _ = onboarding_client
+
+    response = client.post(
+        "/users/me/onboarding",
+        json={
+            **onboarding_payload(),
+            "neetcode_repo_owner": "  alice-github  ",
+            "neetcode_repo_name": "  neetcode-solutions  ",
+            "neetcode_accepted_only_confirmed": True,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["neetcode_repo_owner"] == "alice-github"
+    assert response.json()["neetcode_repo_name"] == "neetcode-solutions"
+    user = session.scalar(select(User))
+    assert user is not None
+    assert user.neetcode_repo_owner == "alice-github"
+    assert user.neetcode_repo_name == "neetcode-solutions"
+
+
+@pytest.mark.parametrize(
+    "repo_fields",
+    [
+        {"neetcode_repo_owner": "alice-github"},
+        {"neetcode_repo_name": "neetcode-solutions"},
+        {"neetcode_repo_owner": " ", "neetcode_repo_name": "neetcode-solutions"},
+        {
+            "neetcode_repo_owner": "alice-github",
+            "neetcode_repo_name": "neetcode-solutions",
+        },
+        {
+            "neetcode_repo_owner": "alice-github",
+            "neetcode_repo_name": "neetcode-solutions",
+            "neetcode_accepted_only_confirmed": False,
+        },
+    ],
+)
+def test_onboarding_rejects_incomplete_neetcode_repository(
+    onboarding_client,
+    repo_fields,
+):
+    client, session, _ = onboarding_client
+
+    response = client.post(
+        "/users/me/onboarding",
+        json={**onboarding_payload(), **repo_fields},
+    )
+
+    assert response.status_code == 422
+    assert session.scalar(select(func.count()).select_from(User)) == 0
+
+
 def test_get_me_reports_onboarding_state_and_profile(onboarding_client):
     client, _, _ = onboarding_client
 

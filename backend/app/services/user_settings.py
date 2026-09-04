@@ -26,10 +26,30 @@ def update_user_settings(
     submission_source: str | None = None,
     neetcode_repo_owner: str | None = None,
     neetcode_repo_name: str | None = None,
+    neetcode_accepted_only_confirmed: bool | None = None,
 ) -> User:
     user = session.get(User, user_id)
     if user is None:
         raise SettingsUserNotFoundError("LeetClimb user does not exist.")
+
+    next_repo_owner = user.neetcode_repo_owner
+    next_repo_name = user.neetcode_repo_name
+    if neetcode_repo_owner is not None:
+        next_repo_owner = neetcode_repo_owner.strip()
+    if neetcode_repo_name is not None:
+        next_repo_name = neetcode_repo_name.strip()
+    if (next_repo_owner is None) != (next_repo_name is None):
+        raise InvalidSettingsError(
+            "NeetCode repository owner and name must be provided together."
+        )
+    repository_changed = (
+        next_repo_owner != user.neetcode_repo_owner
+        or next_repo_name != user.neetcode_repo_name
+    )
+    if repository_changed and next_repo_owner and not neetcode_accepted_only_confirmed:
+        raise InvalidSettingsError(
+            "Confirm that NeetCode GitHub Sync is configured for accepted submissions only."
+        )
 
     if display_name is not None:
         normalized_display_name = display_name.strip()
@@ -42,17 +62,11 @@ def update_user_settings(
         user.leetcode_experience = leetcode_experience
     if weekly_problem_goal is not None:
         user.weekly_problem_goal = weekly_problem_goal
-    if neetcode_repo_owner is not None:
-        user.neetcode_repo_owner = neetcode_repo_owner.strip()
-    if neetcode_repo_name is not None:
-        user.neetcode_repo_name = neetcode_repo_name.strip()
+    user.neetcode_repo_owner = next_repo_owner
+    user.neetcode_repo_name = next_repo_name
     if submission_source is not None:
         user.submission_source = submission_source
 
-    if (user.neetcode_repo_owner is None) != (user.neetcode_repo_name is None):
-        raise InvalidSettingsError(
-            "NeetCode repository owner and name must be provided together."
-        )
     session.commit()
     session.refresh(user)
     return user

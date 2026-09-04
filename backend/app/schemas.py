@@ -54,6 +54,31 @@ class UserOnboardingRequest(BaseModel):
     primary_goal: PrimaryGoal
     leetcode_experience: LeetCodeExperience
     weekly_problem_goal: int = Field(ge=1, le=100)
+    neetcode_repo_owner: str | None = Field(default=None, min_length=1, max_length=100)
+    neetcode_repo_name: str | None = Field(default=None, min_length=1, max_length=100)
+    neetcode_accepted_only_confirmed: bool = False
+
+    @field_validator("neetcode_repo_owner", "neetcode_repo_name")
+    @classmethod
+    def normalize_repo_value(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Repository fields cannot be blank.")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_complete_repo(self) -> "UserOnboardingRequest":
+        if (self.neetcode_repo_owner is None) != (self.neetcode_repo_name is None):
+            raise ValueError(
+                "NeetCode repository owner and name must be provided together."
+            )
+        if self.neetcode_repo_owner is not None and not self.neetcode_accepted_only_confirmed:
+            raise ValueError(
+                "Confirm that NeetCode GitHub Sync is configured for accepted submissions only."
+            )
+        return self
 
 
 class UserResponse(BaseModel):
@@ -90,6 +115,7 @@ class UserSettingsUpdate(BaseModel):
     submission_source: SubmissionSource | None = None
     neetcode_repo_owner: str | None = Field(default=None, min_length=1, max_length=100)
     neetcode_repo_name: str | None = Field(default=None, min_length=1, max_length=100)
+    neetcode_accepted_only_confirmed: bool | None = None
 
     @field_validator("display_name")
     @classmethod

@@ -85,6 +85,23 @@ def test_neetcode_repo_requires_owner_and_name_together():
             user_id=user.id,
             neetcode_repo_owner="Dawit-Bonga",
             neetcode_repo_name="neetcode-submissions",
+            neetcode_accepted_only_confirmed=True,
         )
         assert updated.neetcode_repo_owner == "Dawit-Bonga"
         assert updated.neetcode_repo_name == "neetcode-submissions"
+
+
+def test_neetcode_repo_change_requires_accepted_only_confirmation():
+    with make_session() as session:
+        user = add_user(session)
+
+        with pytest.raises(InvalidSettingsError, match="accepted submissions only"):
+            update_user_settings(
+                session,
+                user_id=user.id,
+                neetcode_repo_owner="alice-github",
+                neetcode_repo_name="neetcode-solutions",
+            )
+
+        assert user.neetcode_repo_owner is None
+        assert user.neetcode_repo_name is None
