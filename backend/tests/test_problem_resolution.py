@@ -35,7 +35,9 @@ def add_user(session: Session, scoring_started_at: datetime) -> User:
 
 def test_confirmed_neetcode_aliases_use_canonical_leetcode_slugs():
     assert canonical_problem_slug("count-number-of-islands") == "number-of-islands"
+    assert canonical_problem_slug("max-water-container") == "container-with-most-water"
     assert canonical_problem_slug("rotting-fruit") == "rotting-oranges"
+    assert canonical_problem_slug("three-integer-sum") == "3sum"
     assert canonical_problem_slug("Duplicate Integer") == "contains-duplicate"
     assert canonical_problem_slug("two_sum") == "two-sum"
 

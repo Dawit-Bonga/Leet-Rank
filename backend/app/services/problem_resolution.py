@@ -23,7 +23,9 @@ _SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 NEETCODE_TO_LEETCODE_SLUG = {
     "count-number-of-islands": "number-of-islands",
     "duplicate-integer": "contains-duplicate",
+    "max-water-container": "container-with-most-water",
     "rotting-fruit": "rotting-oranges",
+    "three-integer-sum": "3sum",
 }
 
 
