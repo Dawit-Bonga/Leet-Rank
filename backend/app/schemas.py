@@ -56,6 +56,7 @@ class UserOnboardingRequest(BaseModel):
     weekly_problem_goal: int = Field(ge=1, le=100)
     neetcode_repo_owner: str | None = Field(default=None, min_length=1, max_length=100)
     neetcode_repo_name: str | None = Field(default=None, min_length=1, max_length=100)
+    neetcode_accepted_only_confirmed: bool = False
 
     @field_validator("neetcode_repo_owner", "neetcode_repo_name")
     @classmethod
@@ -72,6 +73,10 @@ class UserOnboardingRequest(BaseModel):
         if (self.neetcode_repo_owner is None) != (self.neetcode_repo_name is None):
             raise ValueError(
                 "NeetCode repository owner and name must be provided together."
+            )
+        if self.neetcode_repo_owner is not None and not self.neetcode_accepted_only_confirmed:
+            raise ValueError(
+                "Confirm that NeetCode GitHub Sync is configured for accepted submissions only."
             )
         return self
 
@@ -110,6 +115,7 @@ class UserSettingsUpdate(BaseModel):
     submission_source: SubmissionSource | None = None
     neetcode_repo_owner: str | None = Field(default=None, min_length=1, max_length=100)
     neetcode_repo_name: str | None = Field(default=None, min_length=1, max_length=100)
+    neetcode_accepted_only_confirmed: bool | None = None
 
     @field_validator("display_name")
     @classmethod

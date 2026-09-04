@@ -42,6 +42,7 @@ export interface OnboardingPayload {
   weekly_problem_goal: number;
   neetcode_repo_owner?: string;
   neetcode_repo_name?: string;
+  neetcode_accepted_only_confirmed?: boolean;
 }
 
 export interface UserSettingsPayload {
@@ -52,6 +53,7 @@ export interface UserSettingsPayload {
   submission_source?: SubmissionSource;
   neetcode_repo_owner?: string | null;
   neetcode_repo_name?: string | null;
+  neetcode_accepted_only_confirmed?: boolean;
 }
 
 export interface UserSettingsResponse {

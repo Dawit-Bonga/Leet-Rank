@@ -51,6 +51,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
   const [neetcodeRepoName, setNeetcodeRepoName] = useState(
     profile.neetcode_repo_name ?? "",
   );
+  const [acceptedOnlyConfirmed, setAcceptedOnlyConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -62,6 +63,7 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
     setWeeklyGoal(profile.weekly_problem_goal);
     setNeetcodeRepoOwner(profile.neetcode_repo_owner ?? "");
     setNeetcodeRepoName(profile.neetcode_repo_name ?? "");
+    setAcceptedOnlyConfirmed(false);
   }, [profile]);
 
   const unchanged =
@@ -71,11 +73,18 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
     weeklyGoal === profile.weekly_problem_goal &&
     neetcodeRepoOwner.trim() === (profile.neetcode_repo_owner ?? "") &&
     neetcodeRepoName.trim() === (profile.neetcode_repo_name ?? "");
+  const repositoryChanged =
+    neetcodeRepoOwner.trim() !== (profile.neetcode_repo_owner ?? "") ||
+    neetcodeRepoName.trim() !== (profile.neetcode_repo_name ?? "");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if ((neetcodeRepoOwner.trim() && !neetcodeRepoName.trim()) || (!neetcodeRepoOwner.trim() && neetcodeRepoName.trim())) {
       setError("GitHub owner and repository are required for NeetCode sync.");
+      return;
+    }
+    if (repositoryChanged && neetcodeRepoOwner.trim() && !acceptedOnlyConfirmed) {
+      setError("Confirm that NeetCode GitHub Sync is configured for accepted submissions only.");
       return;
     }
     const payload: UserSettingsPayload = {
@@ -85,6 +94,10 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
       weekly_problem_goal: weeklyGoal,
       neetcode_repo_owner: neetcodeRepoOwner.trim() || null,
       neetcode_repo_name: neetcodeRepoName.trim() || null,
+      neetcode_accepted_only_confirmed:
+        repositoryChanged && Boolean(neetcodeRepoOwner.trim())
+          ? acceptedOnlyConfirmed
+          : undefined,
     };
     setSaving(true);
     setError(null);
@@ -270,6 +283,29 @@ export function SettingsPage({ accessToken, profile, onSaved }: SettingsPageProp
                   </div>
                 </label>
               </div>
+              {repositoryChanged && neetcodeRepoOwner.trim() && neetcodeRepoName.trim() && (
+                <label className="choice-card mt-4 flex items-start gap-3">
+                  <input
+                    className="mt-1 h-4 w-4 accent-orange-500"
+                    type="checkbox"
+                    checked={acceptedOnlyConfirmed}
+                    onChange={(event) => {
+                      setAcceptedOnlyConfirmed(event.target.checked);
+                      setSaved(false);
+                    }}
+                    required
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-white">
+                      My NeetCode GitHub Sync status filter is set to Accepted only.
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      Verify this under NeetCode Profile → GitHub before connecting the
+                      repository so failed attempts cannot earn points.
+                    </span>
+                  </span>
+                </label>
+              )}
             </fieldset>
 
             {error && <div className="error-banner">{error}</div>}

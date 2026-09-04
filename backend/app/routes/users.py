@@ -137,6 +137,7 @@ def update_settings(
             ),
             neetcode_repo_owner=request.neetcode_repo_owner,
             neetcode_repo_name=request.neetcode_repo_name,
+            neetcode_accepted_only_confirmed=request.neetcode_accepted_only_confirmed,
         )
     except SettingsUserNotFoundError as exc:
         raise HTTPException(

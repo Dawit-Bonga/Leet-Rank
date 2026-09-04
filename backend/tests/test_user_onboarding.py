@@ -91,6 +91,7 @@ def test_onboarding_can_connect_optional_neetcode_repository(onboarding_client):
             **onboarding_payload(),
             "neetcode_repo_owner": "  alice-github  ",
             "neetcode_repo_name": "  neetcode-solutions  ",
+            "neetcode_accepted_only_confirmed": True,
         },
     )
 
@@ -109,6 +110,15 @@ def test_onboarding_can_connect_optional_neetcode_repository(onboarding_client):
         {"neetcode_repo_owner": "alice-github"},
         {"neetcode_repo_name": "neetcode-solutions"},
         {"neetcode_repo_owner": " ", "neetcode_repo_name": "neetcode-solutions"},
+        {
+            "neetcode_repo_owner": "alice-github",
+            "neetcode_repo_name": "neetcode-solutions",
+        },
+        {
+            "neetcode_repo_owner": "alice-github",
+            "neetcode_repo_name": "neetcode-solutions",
+            "neetcode_accepted_only_confirmed": False,
+        },
     ],
 )
 def test_onboarding_rejects_incomplete_neetcode_repository(

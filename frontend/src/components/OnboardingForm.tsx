@@ -48,6 +48,7 @@ export function OnboardingForm({
   const [connectNeetcode, setConnectNeetcode] = useState(false);
   const [neetcodeRepoOwner, setNeetcodeRepoOwner] = useState("");
   const [neetcodeRepoName, setNeetcodeRepoName] = useState("");
+  const [acceptedOnlyConfirmed, setAcceptedOnlyConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +67,7 @@ export function OnboardingForm({
         ? {
             neetcode_repo_owner: neetcodeRepoOwner.trim(),
             neetcode_repo_name: neetcodeRepoName.trim(),
+            neetcode_accepted_only_confirmed: acceptedOnlyConfirmed,
           }
         : {}),
     };
@@ -261,6 +263,24 @@ export function OnboardingForm({
                     This is optional. You can connect or change the repository later in
                     Settings. Scoring only includes submissions made after setup is complete.
                   </p>
+                  <label className="choice-card flex items-start gap-3 sm:col-span-2">
+                    <input
+                      className="mt-1 h-4 w-4 accent-orange-500"
+                      type="checkbox"
+                      checked={acceptedOnlyConfirmed}
+                      onChange={(event) => setAcceptedOnlyConfirmed(event.target.checked)}
+                      required
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-white">
+                        My NeetCode GitHub Sync status filter is set to Accepted only.
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">
+                        Check this in NeetCode under Profile → GitHub → Status filter. This
+                        prevents failed attempts from being counted as solves.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               )}
             </fieldset>
