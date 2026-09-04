@@ -111,6 +111,10 @@ def test_batch_syncs_new_and_due_accounts_but_skips_fresh_accounts():
         assert result.attempted == 2
         assert result.succeeded == 2
         assert result.failed == 0
+        assert {item.username for item in result.users} == {"new-user", "due-user"}
+        assert all(item.status == "SUCCEEDED" for item in result.users)
+        assert all(item.leetcode is not None for item in result.users)
+        assert all(item.neetcode is None for item in result.users)
         assert set(provider.requested_usernames) == {"new-user-lc", "due-user-lc"}
         assert session.get(UserSyncState, new_user.id).last_successful_at.replace(tzinfo=UTC) == now
         assert session.get(UserSyncState, due_user.id).last_successful_at.replace(tzinfo=UTC) == now
@@ -131,6 +135,11 @@ def test_one_user_failure_is_recorded_without_stopping_the_batch():
         assert result.failed == 1
         assert result.failures[0].user_id == failed_user.id
         assert result.failures[0].username == "broken"
+        assert result.failures[0].provider == "leetcode"
+        failed_result = next(item for item in result.users if item.username == "broken")
+        assert failed_result.status == "FAILED"
+        assert failed_result.failed_provider == "leetcode"
+        assert failed_result.leetcode is None
         assert set(provider.requested_usernames) == {"broken-lc", "working-lc"}
         assert session.get(UserSyncState, failed_user.id).sync_status == "FAILED"
         assert session.get(UserSyncState, successful_user.id).sync_status == "SUCCEEDED"
@@ -187,6 +196,12 @@ def test_batch_runs_optional_neetcode_sync_when_repo_is_configured():
 
         assert result.attempted == 1
         assert result.succeeded == 1
+        assert result.users[0].leetcode is not None
+        assert result.users[0].leetcode.new == 0
+        assert result.users[0].neetcode is not None
+        assert result.users[0].neetcode.new == 1
+        assert result.users[0].neetcode.unmapped == 0
+        assert result.users[0].neetcode.points == 10
         assert neetcode_provider.calls == [
             ("Dawit-Bonga", "neetcode-submissions", 100, None)
         ]
@@ -211,3 +226,8 @@ def test_neetcode_failure_does_not_also_count_account_as_succeeded():
         assert result.succeeded == 0
         assert result.failed == 1
         assert result.succeeded + result.failed == result.attempted
+        assert result.failures[0].provider == "neetcode"
+        assert result.users[0].status == "FAILED"
+        assert result.users[0].failed_provider == "neetcode"
+        assert result.users[0].leetcode is not None
+        assert result.users[0].neetcode is None
