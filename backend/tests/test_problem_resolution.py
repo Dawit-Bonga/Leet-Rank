@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import Base
 from app.models import Problem, Submission, UnmappedSubmission, User
 from app.services.problem_resolution import (
+    NEETCODE_TO_LEETCODE_SLUG,
     canonical_problem_slug,
     queue_unmapped_submission,
     retry_unmapped_submissions,
@@ -34,12 +35,20 @@ def add_user(session: Session, scoring_started_at: datetime) -> User:
 
 
 def test_confirmed_neetcode_aliases_use_canonical_leetcode_slugs():
+    assert len(NEETCODE_TO_LEETCODE_SLUG) == 74
     assert canonical_problem_slug("count-number-of-islands") == "number-of-islands"
     assert canonical_problem_slug("max-water-container") == "container-with-most-water"
     assert canonical_problem_slug("rotting-fruit") == "rotting-oranges"
     assert canonical_problem_slug("three-integer-sum") == "3sum"
     assert canonical_problem_slug("Duplicate Integer") == "contains-duplicate"
     assert canonical_problem_slug("two_sum") == "two-sum"
+
+
+def test_neetcode_alias_catalog_is_normalized_and_has_no_cycles():
+    assert list(NEETCODE_TO_LEETCODE_SLUG) == sorted(NEETCODE_TO_LEETCODE_SLUG)
+    for source, target in NEETCODE_TO_LEETCODE_SLUG.items():
+        assert canonical_problem_slug(source) == target
+        assert source not in NEETCODE_TO_LEETCODE_SLUG.values()
 
 
 def test_retry_resolves_queued_submission_after_alias_is_added():

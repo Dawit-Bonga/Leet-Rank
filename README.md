@@ -50,8 +50,10 @@ Public repositories are recommended for V1; private repositories must be
 explicitly accessible to the token. After the initial scan, synchronization
 requests only commits newer than the latest stored or queued GitHub event.
 
-NeetCode sometimes uses a different problem slug than LeetCode. Confirmed
-differences are mapped in `backend/app/services/problem_resolution.py`.
+NeetCode sometimes uses a different problem slug than LeetCode. The checked-in
+catalog at `backend/app/data/neetcode_problem_aliases.json` covers the NeetCode
+250 list and is loaded by `backend/app/services/problem_resolution.py`. Its
+source dataset and pinned revision are recorded in the catalog metadata.
 Unrecognized slugs remain safely queued in `unmapped_submissions` and are
 retried by later synchronization runs. Review unresolved slugs with:
 
@@ -68,6 +70,17 @@ WHERE resolved_at IS NULL
 GROUP BY problem_slug
 ORDER BY affected_users DESC, submission_count DESC;
 ```
+
+After reviewing a newer source snapshot, regenerate the catalog with:
+
+```bash
+backend/.venv/bin/python backend/scripts/generate_neetcode_alias_catalog.py \
+  /path/to/neetcode_250_complete.json \
+  backend/app/data/neetcode_problem_aliases.json
+```
+
+Review the resulting diff and validate new LeetCode targets before committing
+it. Runtime synchronization never downloads this development dataset.
 
 The frontend requires `frontend/.env.local`. Copy `frontend/.env.example` and
 set the Supabase project URL and publishable key. Never place a Supabase secret
