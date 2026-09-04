@@ -5,6 +5,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Protocol
 
 from sqlalchemy import select
@@ -16,15 +17,30 @@ from app.services.submission_sync import ingest_submission
 
 
 _SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
+_ALIAS_CATALOG_PATH = Path(__file__).resolve().parents[1] / "data" / "neetcode_problem_aliases.json"
 
-# NeetCode occasionally uses a different URL slug for the same LeetCode
-# problem. Keep only confirmed aliases here so a similar-looking title cannot
-# award points for the wrong problem.
-NEETCODE_TO_LEETCODE_SLUG = {
-    "count-number-of-islands": "number-of-islands",
-    "duplicate-integer": "contains-duplicate",
-    "rotting-fruit": "rotting-oranges",
-}
+
+def _load_neetcode_aliases() -> dict[str, str]:
+    try:
+        payload = json.loads(_ALIAS_CATALOG_PATH.read_text(encoding="utf-8"))
+        aliases = payload["aliases"]
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        raise RuntimeError("Could not load the NeetCode problem alias catalog.") from exc
+    if not isinstance(aliases, dict) or not aliases:
+        raise RuntimeError("NeetCode problem alias catalog is empty or malformed.")
+    if not all(
+        isinstance(source, str)
+        and source
+        and isinstance(target, str)
+        and target
+        and source != target
+        for source, target in aliases.items()
+    ):
+        raise RuntimeError("NeetCode problem alias catalog contains an invalid mapping.")
+    return aliases
+
+
+NEETCODE_TO_LEETCODE_SLUG = _load_neetcode_aliases()
 
 
 @dataclass(frozen=True)
