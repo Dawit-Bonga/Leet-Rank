@@ -188,6 +188,8 @@ def create_user(
             primary_goal=request.primary_goal.value,
             leetcode_experience=request.leetcode_experience.value,
             weekly_problem_goal=request.weekly_problem_goal,
+            neetcode_repo_owner=request.neetcode_repo_owner,
+            neetcode_repo_name=request.neetcode_repo_name,
         )
     except AuthUserAlreadyOnboardedError as exc:
         raise HTTPException(

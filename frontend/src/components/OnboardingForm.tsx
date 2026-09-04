@@ -45,6 +45,9 @@ export function OnboardingForm({
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>("CONSISTENCY");
   const [experience, setExperience] = useState<LeetCodeExperience>("INTERMEDIATE");
   const [weeklyGoal, setWeeklyGoal] = useState(5);
+  const [connectNeetcode, setConnectNeetcode] = useState(false);
+  const [neetcodeRepoOwner, setNeetcodeRepoOwner] = useState("");
+  const [neetcodeRepoName, setNeetcodeRepoName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +62,12 @@ export function OnboardingForm({
       primary_goal: primaryGoal,
       leetcode_experience: experience,
       weekly_problem_goal: weeklyGoal,
+      ...(connectNeetcode
+        ? {
+            neetcode_repo_owner: neetcodeRepoOwner.trim(),
+            neetcode_repo_name: neetcodeRepoName.trim(),
+          }
+        : {}),
     };
     try {
       await completeOnboarding(accessToken, payload);
@@ -199,6 +208,62 @@ export function OnboardingForm({
                 />
               </label>
             </div>
+
+            <fieldset>
+              <legend className="field-label">Optional NeetCode integration</legend>
+              <label
+                className={`choice-card block ${connectNeetcode ? "choice-card-active" : ""}`}
+              >
+                <span className="flex items-start gap-3">
+                  <input
+                    className="mt-1 h-4 w-4 accent-orange-500"
+                    type="checkbox"
+                    checked={connectNeetcode}
+                    onChange={(event) => setConnectNeetcode(event.target.checked)}
+                  />
+                  <span>
+                    <span className="block font-semibold text-white">
+                      Connect NeetCode GitHub Sync
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      Count accepted NeetCode submissions saved to your GitHub repository.
+                      LeetCode synchronization always stays enabled.
+                    </span>
+                  </span>
+                </span>
+              </label>
+
+              {connectNeetcode && (
+                <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                  <label>
+                    <span className="field-label">GitHub owner</span>
+                    <input
+                      className="field-input"
+                      value={neetcodeRepoOwner}
+                      onChange={(event) => setNeetcodeRepoOwner(event.target.value)}
+                      placeholder="github-username"
+                      maxLength={100}
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span className="field-label">GitHub repository</span>
+                    <input
+                      className="field-input"
+                      value={neetcodeRepoName}
+                      onChange={(event) => setNeetcodeRepoName(event.target.value)}
+                      placeholder="neetcode-submissions"
+                      maxLength={100}
+                      required
+                    />
+                  </label>
+                  <p className="text-xs leading-5 text-slate-500 sm:col-span-2">
+                    This is optional. You can connect or change the repository later in
+                    Settings. Scoring only includes submissions made after setup is complete.
+                  </p>
+                </div>
+              )}
+            </fieldset>
 
             {error && <div className="error-banner">{error}</div>}
 

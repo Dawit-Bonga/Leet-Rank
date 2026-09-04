@@ -40,6 +40,8 @@ export interface OnboardingPayload {
   primary_goal: PrimaryGoal;
   leetcode_experience: LeetCodeExperience;
   weekly_problem_goal: number;
+  neetcode_repo_owner?: string;
+  neetcode_repo_name?: string;
 }
 
 export interface UserSettingsPayload {
